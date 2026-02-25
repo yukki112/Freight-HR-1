@@ -1706,7 +1706,7 @@ $common_topics = [
         <button class="btn btn-primary btn-sm" onclick="showBulkScheduleModal()">
             <i class="fas fa-layer-group"></i> Bulk Orientation
         </button>
-        <a href="?page=recruitment&subpage=new-hires" class="btn btn-primary btn-sm">
+        <a href="?page=recruitment&subpage=hiring-pipeline" class="btn btn-primary btn-sm">
             <i class="fas fa-user-plus"></i> View New Hires
         </a>
     </div>
