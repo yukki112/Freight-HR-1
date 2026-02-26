@@ -39,296 +39,460 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Freight Management - Login</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>FreightMaster - Login</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: linear-gradient(135deg, #f0f7ff 0%, #e6f0fa 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a1929;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
+            padding: 2rem;
+        }
+
+        .login-screen {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .system-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #ffffff;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+        }
+
+        .system-label i {
+            width: 24px;
+            height: 24px;
+            color: #0ea5e9;
+        }
+
+        .login-container {
+            display: flex;
+            background: linear-gradient(135deg, #1e3a52 0%, #2d5a7b 100%);
+            border-radius: 16px;
             overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            min-height: 500px;
         }
-        
-        .floating-bg {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        .floating-circle {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(14, 76, 146, 0.03);
-            animation: float 20s infinite ease-in-out;
-        }
-        
-        .circle-1 {
-            width: 600px;
-            height: 600px;
-            top: -200px;
-            right: -200px;
-            background: radial-gradient(circle, rgba(14,76,146,0.05) 0%, rgba(14,76,146,0) 70%);
-        }
-        
-        .circle-2 {
-            width: 400px;
-            height: 400px;
-            bottom: -100px;
-            left: -100px;
-            background: radial-gradient(circle, rgba(26,93,160,0.05) 0%, rgba(26,93,160,0) 70%);
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(50px, 50px) scale(1.1); }
-            50% { transform: translate(0, 100px) scale(0.9); }
-            75% { transform: translate(-50px, 50px) scale(1.05); }
-        }
-        
-        .auth-container {
-            position: relative;
-            z-index: 1;
-            width: 100%;
-            max-width: 450px;
-            padding: 20px;
-        }
-        
-        .auth-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 30px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(14, 76, 146, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-        
-        .auth-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .auth-header .logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #0e4c92, #1a5da0);
-            border-radius: 25px;
+
+        .welcome-panel {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
-            color: white;
-            font-size: 40px;
+            padding: 3rem;
+            background: linear-gradient(135deg, #1e3a52 0%, #2d5a7b 100%);
         }
-        
-        .auth-header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 5px;
+
+        .welcome-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
         }
-        
-        .auth-header p {
-            color: #7f8c8d;
-            font-size: 14px;
-        }
-        
-        .auth-header .truck {
-            color: #0e4c92;
-            animation: moveTruck 2s infinite;
-        }
-        
-        @keyframes moveTruck {
-            0%, 100% { transform: translateX(0); }
-            50% { transform: translateX(5px); }
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            font-size: 11px;
-            font-weight: 600;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 15px;
-            background: white;
-            border: 1px solid rgba(14, 76, 146, 0.1);
-            border-radius: 16px;
-            font-size: 14px;
-            color: #2c3e50;
-            transition: all 0.3s;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #0e4c92;
-            box-shadow: 0 0 0 3px rgba(14, 76, 146, 0.1);
-        }
-        
-        .auth-btn {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #0e4c92, #1a5da0);
-            border: none;
-            border-radius: 20px;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-        }
-        
-        .auth-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(14, 76, 146, 0.3);
-        }
-        
-        .auth-btn.secondary {
-            background: white;
-            color: #0e4c92;
-            border: 2px solid #0e4c92;
-        }
-        
-        .auth-btn.secondary:hover {
-            background: #0e4c92;
-            color: white;
-        }
-        
-        .error {
-            background: rgba(231, 76, 60, 0.1);
-            color: #e74c3c;
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            font-size: 13px;
+
+        .welcome-logo {
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 8px;
-            border-left: 4px solid #e74c3c;
+            justify-content: center;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            padding: 20px;
+            border-radius: 50%;
         }
-        
+
+        .welcome-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+            
+        }
+
+        .welcome-text {
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .welcome-subtext {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1rem;
+            text-align: center;
+            max-width: 300px;
+        }
+
+        .login-panel {
+            width: 400px;
+            min-width: 400px;
+            padding: 3rem 2.5rem;
+            background: #1e2936;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .login-box {
+            width: 100%;
+            text-align: center;
+        }
+
+        .login-box .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #0e4c92, #1a5da0);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            padding: 15px;
+        }
+
+        .login-box .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 20%;
+         
+        }
+
+        .login-box h2 {
+            margin-bottom: 1.75rem;
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .login-box form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.875rem;
+        }
+
+        .form-group {
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: #2a3544;
+            border: 2px solid #3a4554;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .login-box input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            background: #2a3544;
+            box-shadow: 0 0 0 1px #0ea5e9;
+        }
+
+        .login-box input::placeholder {
+            color: #8b92a0;
+        }
+
+        .password-field {
+            position: relative;
+        }
+
+        .password-field input {
+            padding-right: 2.5rem;
+        }
+
+        .password-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .password-icon:hover {
+            color: #0ea5e9;
+        }
+
+        .login-box button {
+            padding: 0.875rem;
+            background: #0ea5e9;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .login-box button:hover {
+            background: #0284c7;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(14, 165, 233, 0.3);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ff6b6b;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            text-align: center;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
         .divider {
             display: flex;
             align-items: center;
             text-align: center;
-            margin: 20px 0;
-            color: #bdc3c7;
-            font-size: 12px;
+            margin: 1.5rem 0 1rem;
+            color: #64748b;
+            font-size: 0.8rem;
         }
-        
+
         .divider::before,
         .divider::after {
             content: '';
             flex: 1;
-            border-bottom: 1px solid rgba(14, 76, 146, 0.1);
+            border-bottom: 1px solid #3a4554;
         }
-        
+
+        .divider span {
+            margin: 0 0.75rem;
+        }
+
         .demo-credentials {
-            background: rgba(14, 76, 146, 0.05);
-            border-radius: 16px;
-            padding: 15px;
-            margin-top: 20px;
-            font-size: 12px;
+            background: #2a3544;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            text-align: left;
         }
-        
+
         .demo-credentials p {
-            color: #2c3e50;
-            margin-bottom: 8px;
+            color: #e2e8f0;
+            margin-bottom: 0.75rem;
             font-weight: 600;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        
+
+        .demo-credentials p i {
+            color: #0ea5e9;
+            width: 16px;
+            height: 16px;
+        }
+
         .demo-credentials ul {
             list-style: none;
-            color: #7f8c8d;
+            color: #94a3b8;
+            font-size: 0.8rem;
         }
-        
+
         .demo-credentials li {
-            margin-bottom: 4px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        
-        .demo-credentials i {
-            color: #0e4c92;
-            width: 20px;
+
+        .demo-credentials li i {
+            color: #0ea5e9;
+            width: 14px;
+            height: 14px;
+        }
+
+        .signup-link {
+            margin-top: 1.5rem;
+            text-align: center;
+            color: #cbd5e1;
+            font-size: 0.85rem;
+        }
+
+        .signup-link a {
+            color: #0ea5e9;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .signup-link a:hover {
+            color: #38bdf8;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            margin-top: 2rem;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: #94a3b8;
+            text-decoration: none;
+            margin: 0 0.5rem;
+            transition: color 0.3s;
+        }
+
+        .footer a:hover {
+            color: #0ea5e9;
+        }
+
+        @media (max-width: 990px) {
+            body {
+                padding: 1rem;
+            }
+
+            .login-container {
+                flex-direction: column;
+            }
+            
+            .welcome-panel {
+                min-height: 250px;
+                padding: 2rem;
+            }
+            
+            .login-panel {
+                width: 100%;
+                min-width: unset;
+                padding: 2rem 1.5rem;
+            }
+
+            .welcome-logo {
+                width: 120px;
+                height: 120px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="floating-bg">
-        <div class="floating-circle circle-1"></div>
-        <div class="floating-circle circle-2"></div>
-    </div>
-    
-    <div class="auth-container">
-        <div class="auth-card">
-            <div class="auth-header">
-                <div class="logo">
-                    <i class="fas fa-truck"></i>
+    <div class="login-screen">
+        <div class="login-container">
+            <div class="welcome-panel">
+                <div class="welcome-content">
+                    <div class="welcome-logo">
+                        <!-- Replace this path with your actual logo image path -->
+                        <img src="assets/images/logo1.png" alt="FreightMaster Logo">
+                    </div>
+                    <p class="welcome-text">FreightMaster</p>
+                    <p class="welcome-subtext">Your complete freight management solution</p>
                 </div>
-                <h1>FreightMaster 🚚</h1>
-                <p>Login to manage your <span class="truck">shipments</span></p>
             </div>
-            
-            <?php if ($error): ?>
-            <div class="error">
-                <i class="fas fa-exclamation-circle"></i>
-                <?php echo $error; ?>
-            </div>
-            <?php endif; ?>
-            
-            <form method="POST" action="">
-                <div class="form-group">
-                    <label><i class="fas fa-user"></i> Username or Email</label>
-                    <input type="text" name="username" required placeholder="Enter your username or email">
+            <div class="login-panel">
+                <div class="login-box">
+                    <div class="logo-icon">
+                        <!-- Replace this path with your actual logo image path -->
+                        <img src="assets/images/logo1.png" alt="FreightMaster Logo">
+                    </div>
+                    <h2>Welcome Back</h2>
+                        
+                    <?php if ($error): ?>
+                        <div class="error-message">
+                            <i class="lucide-alert-circle" data-lucide="alert-circle"></i>
+                            <?php echo htmlspecialchars($error); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <form method="POST" action="">
+                        <div class="form-group">
+                            <label>Username or Email</label>
+                            <input type="text" name="username" required placeholder="Enter your username or email" 
+                                   value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Password</label>
+                            <div class="password-field">
+                                <input type="password" name="password" required placeholder="••••••••">
+                                <i data-lucide="eye" class="password-icon" id="togglePassword"></i>
+                            </div>
+                        </div>
+                        
+                        <button type="submit">
+                            <i class="lucide-log-in" data-lucide="log-in"></i> Log In
+                        </button>
+                    </form>
+
+                    <div class="signup-link">
+                        Don't have an account? <a href="#">Contact Administrator</a>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Password</label>
-                    <input type="password" name="password" required placeholder="••••••••">
-                </div>
-                
-                <button type="submit" class="auth-btn">
-                    <i class="fas fa-sign-in-alt"></i> Login
-                </button>
-            </form>
-            
-            <div class="divider">demo credentials</div>
-            
-            <div class="demo-credentials">
-                <p><i class="fas fa-key"></i> Sample Accounts:</p>
-                <ul>
-                    <li><i class="fas fa-user-tie"></i> Admin: admin / password123</li>
-                    <li><i class="fas fa-truck"></i> Dispatcher: dispatcher1 / password123</li>
-                    <li><i class="fas fa-user"></i> Driver: driver1 / password123</li>
-                    <li><i class="fas fa-building"></i> Customer: customer1 / password123</li>
-                </ul>
-            </div>
-            
-            <div class="auth-footer" style="text-align: center; margin-top: 20px; color: #7f8c8d;">
-                <p>Don't have an account? Contact your administrator</p>
             </div>
         </div>
+        
+        <div class="footer">
+            © 2025 FreightMaster Management System. All rights reserved. &nbsp;|&nbsp;
+            <a href="#">Terms & Conditions</a> &nbsp;|&nbsp;
+            <a href="#">Privacy Policy</a>
+        </div>
     </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Password toggle functionality
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.querySelector('.password-field input');
+
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // Toggle icon
+            this.setAttribute('data-lucide', type === 'password' ? 'eye' : 'eye-off');
+            lucide.createIcons();
+        });
+    </script>
 </body>
 </html>
