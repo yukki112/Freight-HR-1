@@ -15,6 +15,11 @@ $page_title = ucfirst(str_replace('-', ' ', $current_subpage ?: $current_page));
 $user = getUserInfo($pdo, $_SESSION['user_id']);
 $role = $user['role'];
 
+// Redirect based on role
+if ($role === 'manager' && $current_page === 'dashboard') {
+    $current_page = 'manager-dashboard';
+}
+
 // Get HR stats
 $stats = getHRStats($pdo, $_SESSION['user_id']);
 $unread_notifications = getUnreadNotificationCount($pdo, $_SESSION['user_id']);
@@ -39,8 +44,14 @@ $unread_notifications = getUnreadNotificationCount($pdo, $_SESSION['user_id']);
             <div class="floating-square square-2"></div>
         </div>
 
-        <!-- Sidebar -->
-        <?php include 'includes/sidebar.php'; ?>
+        <!-- Sidebar - Choose based on role -->
+        <?php 
+        if ($role === 'manager') {
+            include 'includes/sidebar-manager.php';
+        } else {
+            include 'includes/sidebar.php';
+        }
+        ?>
 
         <!-- Mobile Menu Button -->
         <button class="mobile-menu-btn" onclick="toggleMobileMenu()">

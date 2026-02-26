@@ -1063,7 +1063,7 @@ $past_interviews = array_filter($interviews, function($i) {
 
 .card-footer {
     display: flex;
-    gap: 8px;
+    gap: 2px;
     justify-content: flex-end;
     margin-top: 15px;
     padding-top: 15px;

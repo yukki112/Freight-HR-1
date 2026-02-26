@@ -1,5 +1,8 @@
 <?php
 // includes/sidebar.php
+// START OUTPUT BUFFERING AT THE VERY TOP
+ob_start();
+
 require_once 'includes/notification_functions.php';
 
 $current_page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
@@ -56,9 +59,7 @@ function isSubpageActive($subpage, $current_subpage) {
                 </div>
                 <?php endif; ?>
             </div>
-            <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
-                <i class="fas fa-chevron-<?php echo $collapsed ? 'right' : 'left'; ?>"></i>
-            </button>
+           
         </div>
 
         <div class="sidebar-nav-container">
@@ -136,7 +137,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <?php endif; ?>
                             </a>
                         </li>
-                        <!-- NEW: Screening & Evaluation -->
                         <li class="submenu-item <?php echo isSubpageActive('screening-evaluation', $current_subpage) ? 'active' : ''; ?>">
                             <a href="?page=applicant&subpage=screening-evaluation">
                                 <i class="fas fa-clipboard-check"></i>
@@ -146,7 +146,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <?php endif; ?>
                             </a>
                         </li>
-                        <!-- NEW: Shortlisted Candidates -->
                         <li class="submenu-item <?php echo isSubpageActive('shortlisted-candidates', $current_subpage) ? 'active' : ''; ?>">
                             <a href="?page=applicant&subpage=shortlisted-candidates">
                                 <i class="fas fa-star"></i>
@@ -162,7 +161,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <span>Status Tracking</span>
                             </a>
                         </li>
-                        
                     </ul>
                 </ul>
 
@@ -193,7 +191,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <?php endif; ?>
                             </a>
                         </li>
-                        <!-- NEW: Interview Scheduling (from shortlisted) -->
                         <li class="submenu-item <?php echo isSubpageActive('interview-scheduling', $current_subpage) ? 'active' : ''; ?>">
                             <a href="?page=recruitment&subpage=interview-scheduling">
                                 <i class="fas fa-calendar-check"></i>
@@ -203,7 +200,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <?php endif; ?>
                             </a>
                         </li>
-                        <!-- NEW: Interview Panel Evaluation -->
                         <li class="submenu-item <?php echo isSubpageActive('interview-panel', $current_subpage) ? 'active' : ''; ?>">
                             <a href="?page=recruitment&subpage=interview-panel">
                                 <i class="fas fa-users-cog"></i>
@@ -213,8 +209,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <?php endif; ?>
                             </a>
                         </li>
-                       
-                        <!-- NEW: Final Selection & Offers -->
                         <li class="submenu-item <?php echo isSubpageActive('final-selection', $current_subpage) ? 'active' : ''; ?>">
                             <a href="?page=recruitment&subpage=final-selection">
                                 <i class="fas fa-trophy"></i>
@@ -230,16 +224,12 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <span>Hiring Pipeline</span>
                             </a>
                         </li>
-
-                         <!-- NEW: Interview Feedback & Ranking -->
                         <li class="submenu-item <?php echo isSubpageActive('interview-feedback', $current_subpage) ? 'active' : ''; ?>">
                             <a href="?page=recruitment&subpage=interview-feedback">
                                 <i class="fas fa-star"></i>
                                 <span>Feedback & Ranking</span>
                             </a>
                         </li>
-                        
-                        
                     </ul>
                 </ul>
 
@@ -267,7 +257,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <span>New Hire Dashboard</span>
                             </a>
                         </li>
-                        
                         <li class="submenu-item <?php echo isSubpageActive('document-submission', $current_subpage) ? 'active' : ''; ?>">
                             <a href="?page=onboarding&subpage=document-submission">
                                 <i class="fas fa-file-upload"></i>
@@ -280,8 +269,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <span>Orientation Schedule</span>
                             </a>
                         </li>
-                    
-                       
                     </ul>
                 </ul>
 
@@ -313,12 +300,6 @@ function isSubpageActive($subpage, $current_subpage) {
                             <a href="?page=performance&subpage=performance-reviews">
                                 <i class="fas fa-star"></i>
                                 <span>Performance Reviews</span>
-                            </a>
-                        </li>
-                        <li class="submenu-item <?php echo isSubpageActive('attendance-tracking', $current_subpage) ? 'active' : ''; ?>">
-                            <a href="?page=performance&subpage=attendance-tracking">
-                                <i class="fas fa-clock"></i>
-                                <span>Attendance & Time Tracking</span>
                             </a>
                         </li>
                         <li class="submenu-item <?php echo isSubpageActive('feedback-notes', $current_subpage) ? 'active' : ''; ?>">
@@ -372,12 +353,6 @@ function isSubpageActive($subpage, $current_subpage) {
                                 <span>Rewards & Incentives</span>
                             </a>
                         </li>
-                        <li class="submenu-item <?php echo isSubpageActive('milestones', $current_subpage) ? 'active' : ''; ?>">
-                            <a href="?page=recognition&subpage=milestones">
-                                <i class="fas fa-birthday-cake"></i>
-                                <span>Milestones & Anniversaries</span>
-                            </a>
-                        </li>
                     </ul>
                 </ul>
             </div>
@@ -391,20 +366,7 @@ function isSubpageActive($subpage, $current_subpage) {
                 </div>
                 <?php endif; ?>
                 <ul class="nav-menu">
-                    <li class="nav-item <?php echo $current_page == 'user-management' ? 'active' : ''; ?>" style="--item-color: #0e4c92;">
-                        <a href="?page=user-management">
-                            <div class="icon-wrapper">
-                                <i class="fas fa-users-cog"></i>
-                            </div>
-                            <?php if (!$collapsed): ?>
-                            <span class="nav-label">User Management</span>
-                            <?php if (($module_counts['user']['count'] ?? 0) > 0): ?>
-                            <span class="nav-badge"><?php echo $module_counts['user']['count']; ?></span>
-                            <?php endif; ?>
-                            <div class="nav-indicator"></div>
-                            <?php endif; ?>
-                        </a>
-                    </li>
+                   
                     <li class="nav-item <?php echo $current_page == 'profile' ? 'active' : ''; ?>" style="--item-color: #1a5da0;">
                         <a href="?page=profile">
                             <div class="icon-wrapper">
@@ -416,17 +378,7 @@ function isSubpageActive($subpage, $current_subpage) {
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li class="nav-item <?php echo $current_page == 'settings' ? 'active' : ''; ?>" style="--item-color: #2a6eb0;">
-                        <a href="?page=settings">
-                            <div class="icon-wrapper">
-                                <i class="fas fa-sliders-h"></i>
-                            </div>
-                            <?php if (!$collapsed): ?>
-                            <span class="nav-label">Settings</span>
-                            <div class="nav-indicator"></div>
-                            <?php endif; ?>
-                        </a>
-                    </li>
+                   
                 </ul>
             </div>
         </div>
@@ -694,3 +646,8 @@ function logout() {
     }
 }
 </script>
+
+<?php
+// End output buffering and flush
+ob_end_flush();
+?>

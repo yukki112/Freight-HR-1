@@ -354,7 +354,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_final_evaluati
                 strengths = ?,
                 weaknesses = ?,
                 overall_comments = ?,
-                status = 'completed'
+                status = 'completed',
+                submitted_at = NOW()
             WHERE id = ?
         ");
         $stmt->execute([
@@ -445,6 +446,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_selection']))
         $start_date = $_POST['start_date'];
         $remarks = $_POST['remarks'] ?? '';
         
+        // Get applicant details first
+        $stmt = $pdo->prepare("
+            SELECT ja.*, jp.title as position_title, jp.department, jp.id as job_posting_id
+            FROM job_applications ja
+            LEFT JOIN job_postings jp ON ja.job_posting_id = jp.id
+            WHERE ja.id = ?
+        ");
+        $stmt->execute([$applicant_id]);
+        $applicant = $stmt->fetch();
+        
+        if (!$applicant) {
+            throw new Exception("Applicant not found");
+        }
+        
         // Update applicant as selected
         $stmt = $pdo->prepare("
             UPDATE job_applications SET
@@ -460,45 +475,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_selection']))
         ");
         $stmt->execute([$_SESSION['user_id'], $remarks, $approved_salary, $start_date, $applicant_id]);
         
-        // Get applicant details for email
-        $stmt = $pdo->prepare("
-            SELECT ja.*, jp.title as position_title
-            FROM job_applications ja
-            LEFT JOIN job_postings jp ON ja.job_posting_id = jp.id
-            WHERE ja.id = ?
-        ");
+        // Check if new hire record already exists
+        $stmt = $pdo->prepare("SELECT id FROM new_hires WHERE applicant_id = ?");
         $stmt->execute([$applicant_id]);
-        $applicant = $stmt->fetch();
+        $existing_hire = $stmt->fetch();
         
-        // Send hire notification
-        $result_data = [
-            'result' => 'hire',
-            'position' => $applicant['position_title'] ?: 'the position',
-            'score' => $applicant['final_interview_score'] ?: 0
-        ];
-        
-        sendFinalResultEmail($applicant['email'], $applicant['first_name'] . ' ' . $applicant['last_name'], $result_data);
-        
-        // Create new hire record
-        $stmt = $pdo->prepare("
-            INSERT INTO new_hires (
-                applicant_id, job_posting_id, hire_date, start_date, position, department, status, created_by
-            ) VALUES (?, ?, CURDATE(), ?, ?, ?, 'onboarding', ?)
-        ");
-        
-        // Get department from job posting
-        $dept_stmt = $pdo->prepare("SELECT department FROM job_postings WHERE id = ?");
-        $dept_stmt->execute([$applicant['job_posting_id']]);
-        $dept = $dept_stmt->fetch();
-        
-        $stmt->execute([
-            $applicant_id,
-            $applicant['job_posting_id'],
-            $start_date,
-            $applicant['position_title'],
-            $dept['department'] ?? 'operations',
-            $_SESSION['user_id']
-        ]);
+        if ($existing_hire) {
+            // Update existing record - DO NOT change employee_id if it already exists
+            $stmt = $pdo->prepare("
+                UPDATE new_hires SET
+                    job_posting_id = ?,
+                    hire_date = CURDATE(),
+                    start_date = ?,
+                    position = ?,
+                    department = ?,
+                    status = 'onboarding',
+                    updated_at = NOW()
+                WHERE applicant_id = ?
+            ");
+            $stmt->execute([
+                $applicant['job_posting_id'],
+                $start_date,
+                $applicant['position_title'],
+                $applicant['department'] ?? 'operations',
+                $applicant_id
+            ]);
+        } else {
+            // Generate unique employee ID using the function from config.php
+            // This function is already defined in config.php
+            $employee_id = generateEmployeeID($pdo, $applicant['department'] ?? 'operations');
+            
+            // Create new hire record
+            $stmt = $pdo->prepare("
+                INSERT INTO new_hires (
+                    applicant_id, employee_id, job_posting_id, hire_date, start_date, 
+                    position, department, status, created_by, created_at, updated_at
+                ) VALUES (?, ?, ?, CURDATE(), ?, ?, ?, 'onboarding', ?, NOW(), NOW())
+            ");
+            $stmt->execute([
+                $applicant_id,
+                $employee_id,
+                $applicant['job_posting_id'],
+                $start_date,
+                $applicant['position_title'],
+                $applicant['department'] ?? 'operations',
+                $_SESSION['user_id']
+            ]);
+        }
         
         // Update job posting slots
         $stmt = $pdo->prepare("
@@ -508,6 +531,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_selection']))
             WHERE id = ?
         ");
         $stmt->execute([$applicant['job_posting_id']]);
+        
+        // Send hire notification
+        $result_data = [
+            'result' => 'hire',
+            'position' => $applicant['position_title'] ?: 'the position',
+            'score' => $applicant['final_interview_score'] ?: 0
+        ];
+        
+        sendFinalResultEmail($applicant['email'], $applicant['first_name'] . ' ' . $applicant['last_name'], $result_data);
         
         $pdo->commit();
         

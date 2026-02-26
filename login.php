@@ -3,7 +3,7 @@
 require_once 'includes/config.php';
 
 if (isLoggedIn()) {
-    redirect('index.php');
+    redirect('root.php');
 }
 
 $error = '';
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             logActivity($pdo, $user['id'], 'login', 'User logged in');
             
-            redirect('index.php');
+            redirect('root.php');
         } else {
             $error = 'Invalid username or password';
         }

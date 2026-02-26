@@ -256,19 +256,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'start' && isset($_GET['id']))
         $interview_id = $_GET['id'];
         
         // Check if evaluation already exists
-        $stmt = $pdo->prepare("
-            SELECT id FROM panel_evaluations 
-            WHERE interview_id = ? AND panel_id = ?
-        ");
-        $stmt->execute([$interview_id, $_SESSION['user_id']]);
-        $existing = $stmt->fetch();
-        
-        if ($existing) {
-            // Clear output buffer and redirect
-            ob_clean();
-            header("Location: ?page=recruitment&subpage=interview-panel&action=evaluate&id=" . $existing['id']);
-            exit;
-        }
+$stmt = $pdo->prepare("
+    SELECT id FROM panel_evaluations 
+    WHERE interview_id = ? AND panel_id = ?
+");
+$stmt->execute([$interview_id, $_SESSION['user_id']]);
+$existing = $stmt->fetch();
+
+if ($existing) {
+    // Clear output buffer and redirect
+    ob_clean();
+    header("Location: ?page=recruitment&subpage=interview-panel&action=evaluate&id=" . $existing['id']);
+    exit;
+}
         
         // Get interview details
         $stmt = $pdo->prepare("
@@ -596,7 +596,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_evaluation']))
         
         // Clear output buffer and redirect
         ob_clean();
-        header("Location: ?page=recruitment&subpage=interview-panel&success=1");
+        header("Location: ?page=recruitment&subpage=interview-panel");
         exit;
         
     } catch (Exception $e) {
