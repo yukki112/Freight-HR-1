@@ -13,7 +13,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
  * Central place for the HR sending account.
  * Change it here and it updates everywhere.
  */
-if (!defined('HR_MAIL_USERNAME')) define('HR_MAIL_USERNAME', 'humanresourcesmanagement88@gmail.com');
+if (!defined('HR_MAIL_USERNAME')) define('HR_MAIL_USERNAME', 'stephenviray12@gmail.com');
 if (!defined('HR_MAIL_FROM_NAME')) define('HR_MAIL_FROM_NAME', 'Priority Handling Logistics HR');
 
 class MailConfig {
@@ -41,7 +41,7 @@ class MailConfig {
         
         // Gmail credentials (must match the From address below)
         $this->mail->Username   = HR_MAIL_USERNAME;   // humanresourcesmanagement88@gmail.com
-        $this->mail->Password   = 'dkzh vikl gafx tgmh';  // Gmail App Password
+        $this->mail->Password   = 'pfig aojj rcsb firf';  // Gmail App Password
         
         $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $this->mail->Port       = 587;
