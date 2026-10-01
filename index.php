@@ -798,7 +798,7 @@ try {
 <body>
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
-        <img src="assets/logo.jpg" alt="Priority Handling Logistics Logo" class="loading-logo">
+        <img src="assets/images/LOGO.jpg" alt="Priority Handling Logistics Logo" class="loading-logo">
         <div class="loading-spinner"></div>
         <div class="loading-text">
             Loading Priority Handling Logistics<span class="loading-dots"></span>
@@ -809,7 +809,7 @@ try {
     <nav class="main-nav">
         <div class="nav-container">
             <div class="logo">
-                <img src="assets/logo.jpg" alt="Priority Handling Logistics Logo">
+                <img src="assets/images/LOGO.jpg" alt="Priority Handling Logistics Logo">
                 <div class="logo-text">
                     <h1>Priority Handling Logistics, Inc.</h1>
                     <span class="tagline">HR Management System</span>
@@ -1155,7 +1155,7 @@ try {
     <footer style="background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); color: white; padding: 3rem 0; text-align: center; border-top: 1px solid rgba(58, 69, 84, 0.5);">
         <div class="container">
             <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 1rem;">
-                <img src="assets/logo.jpg" alt="Priority Handling Logistics Logo" style="width: 40px; height: 40px; object-fit: contain; border-radius: 8px;">
+                <img src="assets/images/LOGO.jpg" alt="Priority Handling Logistics Logo" style="width: 40px; height: 40px; object-fit: contain; border-radius: 8px;">
                 <span style="color: #ffffff; font-weight: 600; font-size: 1rem;">Priority Handling Logistics, Inc.</span>
             </div>
             <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 0.5rem;">&copy; <?php echo date('Y'); ?> Priority Handling Logistics, Inc. All rights reserved.</p>
