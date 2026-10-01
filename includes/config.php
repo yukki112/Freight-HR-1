@@ -3,21 +3,23 @@
 session_start();
 
 // --- DATABASE CONFIGURATION ---
-// These pull from HostForge Environment Variables. 
-// If the variables aren't set, it falls back to the values below.
-$host     = getenv('DB_HOST') ?: 'mariadb-9cncsfn2.internal';
-$port     = getenv('DB_PORT') ?: '3306';
-$dbname   = getenv('DB_DATABASE') ?: 'hf_db_9cncsfn2';
-$username = getenv('DB_USERNAME') ?: 'hf_c58urvzhqh';
-$password = getenv('DB_PASSWORD') ?: 'b363evIRaZHGrmTk26NJHHzLP8ZlCGBn';
+// Priority Handling Logistics, Inc. — HR Management System
+// HostForge deployment: new database (hf_db_9cncsfn2)
+// 
+// NOTE: If old env vars on HostForge still point to the deleted DB
+// (mariadb-2ksp94k7.internal), this file forces the correct values.
+
+$host     = 'mariadb-9cncsfn2.internal';
+$port     = '3306';
+$dbname   = 'hf_db_9cncsfn2';
+$username = 'hf_c58urvzhqh';
+$password = 'b363evIRaZHGrmTk26NJHHzLP8ZLCGBn';
 
 try {
-    // Note: Added $port to the DSN string
     $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
-    // For debugging on the cloud, it's better to see the actual error
     die(json_encode(['success' => false, 'error' => 'Database connection failed: ' . $e->getMessage()]));
 }
 
@@ -72,36 +74,28 @@ function getUserInfo($pdo, $user_id) {
 function getHRStats($pdo, $user_id) {
     $stats = [];
     
-    // Total applicants
     $stmt = $pdo->query("SELECT COUNT(*) FROM applicants");
     $stats['total_applicants'] = $stmt->fetchColumn();
     
-    // New applicants today
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM applicants WHERE DATE(application_date) = CURDATE()");
     $stmt->execute();
     $stats['new_applicants_today'] = $stmt->fetchColumn();
     
-    // Active job postings
     $stmt = $pdo->query("SELECT COUNT(*) FROM job_postings WHERE status = 'published'");
     $stats['active_jobs'] = $stmt->fetchColumn();
     
-    // Pending interviews
     $stmt = $pdo->query("SELECT COUNT(*) FROM interviews WHERE status = 'scheduled' AND interview_date >= CURDATE()");
     $stats['pending_interviews'] = $stmt->fetchColumn();
     
-    // New hires in onboarding
     $stmt = $pdo->query("SELECT COUNT(*) FROM new_hires WHERE status = 'onboarding'");
     $stats['onboarding_count'] = $stmt->fetchColumn();
     
-    // Active employees (probationary + regular)
     $stmt = $pdo->query("SELECT COUNT(*) FROM new_hires WHERE status = 'active'");
     $stats['active_employees'] = $stmt->fetchColumn();
     
-    // Pending document verifications
     $stmt = $pdo->query("SELECT COUNT(*) FROM applicant_documents WHERE verified = FALSE");
     $stats['pending_verifications'] = $stmt->fetchColumn();
     
-    // Upcoming probation reviews
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM new_hires WHERE probation_end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)");
     $stmt->execute();
     $stats['upcoming_reviews'] = $stmt->fetchColumn();
