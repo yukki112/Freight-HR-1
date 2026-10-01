@@ -1,5 +1,10 @@
 <?php
-ob_start(); 
+// root.php
+// ⚠️ IMPORTANT: ob_start() MUST be the very first executable statement.
+// This allows modules included below to send header() redirects without
+// triggering "headers already sent" warnings.
+ob_start();
+
 require_once 'includes/config.php';
 
 if (!isLoggedIn()) {
@@ -177,3 +182,9 @@ $unread_notifications = getUnreadNotificationCount($pdo, $_SESSION['user_id'] ??
     </script>
 </body>
 </html>
+<?php
+// Flush the output buffer at the end of the request
+if (ob_get_level() > 0) {
+    ob_end_flush();
+}
+?>
