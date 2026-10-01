@@ -1,5 +1,6 @@
 <?php
-session_start();
+// includes/config.php handles session_start() and $pdo connection
+require_once __DIR__ . '/includes/config.php';
 
 // Check if user is logged in
 $is_logged_in = isset($_SESSION['user_id']);
@@ -8,32 +9,43 @@ $current_role = $_SESSION['role'] ?? 'Guest';
 $first_name = $_SESSION['first_name'] ?? '';
 $last_name = $_SESSION['last_name'] ?? '';
 
-// Database connection
-$host = 'localhost:3307';
-$dbname = 'freight_management';
-$username = 'root'; // Update with your DB username
-$password = ''; // Update with your DB password
-
+// Fetch published job postings from the real database
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Fetch published job postings
-    $stmt = $pdo->prepare("SELECT * FROM job_postings WHERE status = 'published' ORDER BY published_date DESC");
+    $stmt = $pdo->prepare("
+        SELECT * FROM job_postings 
+        WHERE status = 'published' 
+        AND (closing_date IS NULL OR closing_date >= CURDATE())
+        ORDER BY published_date DESC
+    ");
     $stmt->execute();
     $job_postings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
     $job_postings = [];
-    error_log("Database connection error: " . $e->getMessage());
+    error_log("Database error fetching job postings: " . $e->getMessage());
+}
+
+// Get total employee count for hero stats
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) FROM new_hires WHERE status IN ('onboarding', 'active')");
+    $total_employees = $stmt->fetchColumn();
+} catch(PDOException $e) {
+    $total_employees = 0;
+}
+
+// Get total departments count
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) FROM departments WHERE is_active = 1");
+    $total_departments = $stmt->fetchColumn();
+} catch(PDOException $e) {
+    $total_departments = 0;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SLATE - Freight Management System</title>
+    <title>Priority Handling Logistics, Inc. - HR Management System</title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         * {
@@ -77,9 +89,10 @@ try {
         }
 
         .loading-logo {
-            width: 120px;
+            width: 140px;
             height: auto;
             margin-bottom: 2rem;
+            border-radius: 12px;
             animation: pulse 2s ease-in-out infinite;
         }
 
@@ -105,12 +118,8 @@ try {
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .loading-text {
@@ -123,12 +132,8 @@ try {
         }
 
         @keyframes fadeInOut {
-            0%, 100% {
-                opacity: 0.6;
-            }
-            50% {
-                opacity: 1;
-            }
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
         }
 
         .loading-dots::after {
@@ -137,18 +142,10 @@ try {
         }
 
         @keyframes dots {
-            0%, 20% {
-                content: '';
-            }
-            40% {
-                content: '.';
-            }
-            60% {
-                content: '..';
-            }
-            80%, 100% {
-                content: '...';
-            }
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
         }
         
         /* Navigation */
@@ -179,15 +176,31 @@ try {
         }
 
         .logo img {
-            width: 50px;
-            height: auto;
+            width: 55px;
+            height: 55px;
+            object-fit: contain;
+            border-radius: 10px;
         }
         
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+
         .logo h1 {
             color: #ffffff;
-            font-size: 1.5rem;
+            font-size: 1.1rem;
             font-weight: 700;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
+            line-height: 1.2;
+        }
+
+        .logo .tagline {
+            color: #0ea5e9;
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
         
         .nav-links {
@@ -277,7 +290,7 @@ try {
         }
         
         .hero-content h1 {
-            font-size: 4rem;
+            font-size: 3.5rem;
             font-weight: 800;
             margin-bottom: 1.5rem;
             line-height: 1.1;
@@ -616,7 +629,7 @@ try {
         
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 2rem;
         }
         
@@ -719,6 +732,7 @@ try {
             color: #0ea5e9;
             width: 1.5rem;
             height: 1.5rem;
+            flex-shrink: 0;
         }
 
         .about-feature-item span {
@@ -728,10 +742,6 @@ try {
         
         /* Responsive Design */
         @media (max-width: 768px) {
-            .top-header {
-                display: none;
-            }
-            
             .nav-container {
                 flex-direction: column;
                 height: auto;
@@ -746,6 +756,10 @@ try {
             
             .hero-content h1 {
                 font-size: 2.5rem;
+            }
+            
+            .hero-stats {
+                grid-template-columns: 1fr;
             }
             
             .jobs-grid {
@@ -774,16 +788,20 @@ try {
             .feature-card {
                 padding: 40px 20px;
             }
+
+            .logo h1 {
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
 <body>
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
-        <img src="assets/images/logo1.png" alt="SLATE Logo" class="loading-logo">
+        <img src="assets/logo.jpg" alt="Priority Handling Logistics Logo" class="loading-logo">
         <div class="loading-spinner"></div>
         <div class="loading-text">
-            Loading SLATE Freight System<span class="loading-dots"></span>
+            Loading Priority Handling Logistics<span class="loading-dots"></span>
         </div>
     </div>
 
@@ -791,12 +809,15 @@ try {
     <nav class="main-nav">
         <div class="nav-container">
             <div class="logo">
-                <img src="assets/images/logo1.png" alt="SLATE Logo">
-                <h1>SLATE</h1>
+                <img src="assets/logo.jpg" alt="Priority Handling Logistics Logo">
+                <div class="logo-text">
+                    <h1>Priority Handling Logistics, Inc.</h1>
+                    <span class="tagline">HR Management System</span>
+                </div>
             </div>
             <ul class="nav-links">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#jobs">Jobs</a></li>
+                <li><a href="#features">Modules</a></li>
+                <li><a href="#jobs">Careers</a></li>
                 <li><a href="#about">About</a></li>
                 <?php if ($is_logged_in): ?>
                     <li><a href="login-redirect.php" class="btn-primary">
@@ -818,9 +839,9 @@ try {
     <!-- Hero Section -->
     <section class="hero-section">
         <div class="hero-content">
-            <div class="hero-badge"> SLATE HR Management System</div>
-            <h1>Recruitment to Regularization — All in One Platform</h1>
-            <p>Manage the full employee lifecycle: job requisitions, applicant screening, interviews, road tests, onboarding, performance reviews, and social recognition — built for freight &amp; logistics teams.</p>
+            <div class="hero-badge">Priority Handling Logistics, Inc. — HR Management System</div>
+            <h1>Complete HR Solutions for Logistics Excellence</h1>
+            <p>Manage your workforce end-to-end: recruitment, onboarding, employee self-service, and comprehensive employee records — all built for the fast-paced logistics industry.</p>
             <div class="cta-buttons">
                 <?php if ($is_logged_in): ?>
                     <a href="login-redirect.php" class="cta-button">
@@ -848,12 +869,12 @@ try {
                     <div class="stat-label">Open Positions</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number">5</div>
-                    <div class="stat-label">User Portals</div>
+                    <div class="stat-number"><?php echo $total_employees; ?></div>
+                    <div class="stat-label">Team Members</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number">E2E</div>
-                    <div class="stat-label">HR Workflow</div>
+                    <div class="stat-number"><?php echo $total_departments; ?></div>
+                    <div class="stat-label">Departments</div>
                 </div>
             </div>
         </div>
@@ -863,9 +884,9 @@ try {
     <section class="jobs-section" id="jobs">
         <div class="container">
             <div class="section-header">
-                <div class="section-badge"> Join Our Team</div>
+                <div class="section-badge">Join Our Team</div>
                 <h2 class="section-title">Current Open Positions</h2>
-                <p class="section-subtitle">Browse through our available positions and start your journey with SLATE Freight Management</p>
+                <p class="section-subtitle">Browse through our available positions and start your career with Priority Handling Logistics, Inc.</p>
             </div>
 
             <div class="jobs-grid">
@@ -877,17 +898,21 @@ try {
                     </div>
                 <?php else: ?>
                     <?php foreach ($job_postings as $job): ?>
+                        <?php 
+                            $slots_left = ($job['slots_available'] ?? 0) - ($job['slots_filled'] ?? 0);
+                            if ($slots_left < 0) $slots_left = 0;
+                        ?>
                         <div class="job-card">
                             <div class="job-header">
                                 <span class="job-code"><?php echo htmlspecialchars($job['job_code']); ?></span>
-                                <span class="job-slots"><?php echo $job['slots_available'] - $job['slots_filled']; ?> slots left</span>
+                                <span class="job-slots"><?php echo $slots_left; ?> slot<?php echo $slots_left != 1 ? 's' : ''; ?> left</span>
                             </div>
                             <div class="job-type-badge">
-                                <?php echo str_replace('_', ' ', ucfirst($job['employment_type'] ?? 'Full Time')); ?>
+                                <?php echo ucwords(str_replace('_', ' ', $job['employment_type'] ?? 'Full Time')); ?>
                             </div>
                             <h3 class="job-title"><?php echo htmlspecialchars($job['title']); ?></h3>
                             <span class="job-department">
-                                <?php echo ucfirst(htmlspecialchars($job['department'])); ?>
+                                <?php echo ucwords(str_replace('_', ' ', htmlspecialchars($job['department']))); ?>
                             </span>
                             
                             <div class="job-details">
@@ -912,10 +937,10 @@ try {
                                 </div>
                                 <?php endif; ?>
                                 
-                                <?php if (!empty($job['salary_min']) && !empty($job['salary_max'])): ?>
+                                <?php if (!empty($job['license_required'])): ?>
                                 <div class="job-detail-item">
-                                    <i data-lucide="wallet"></i>
-                                    <span>₱<?php echo number_format($job['salary_min']); ?> - ₱<?php echo number_format($job['salary_max']); ?></span>
+                                    <i data-lucide="id-card"></i>
+                                    <span>License: <?php echo htmlspecialchars($job['license_required']); ?></span>
                                 </div>
                                 <?php endif; ?>
                             </div>
@@ -944,56 +969,35 @@ try {
         </div>
     </section>
 
-    <!-- Features Section -->
+    <!-- Features Section - Core Modules -->
     <section class="features-section" id="features">
         <div class="container">
             <div class="section-header">
-                <div class="section-badge"> System Modules</div>
-                <h2 class="section-title">5 Integrated Modules for Complete HR Management</h2>
-                <p class="section-subtitle">From job requisitions to social recognition — every stage of the employee lifecycle in one platform</p>
+                <div class="section-badge">System Modules</div>
+                <h2 class="section-title">Core HR Modules for Logistics Operations</h2>
+                <p class="section-subtitle">Three integrated modules designed to streamline your workforce management</p>
             </div>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-lucide="file-plus"></i>
+                        <i data-lucide="users"></i>
                     </div>
-                    <h3>Recruitment Management</h3>
-                    <p>Managers submit job requisitions with budget approval. HR reviews, approves, and creates job postings from approved requests.</p>
+                    <h3>Core Human Resources</h3>
+                    <p>Centralized HR operations covering recruitment, hiring, onboarding, and workforce planning. Manage job postings, applicant screening, interviews, and seamless new-hire integration — all tailored for logistics teams.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-lucide="filter"></i>
+                        <i data-lucide="user-check"></i>
                     </div>
-                    <h3>Applicant Management</h3>
-                    <p>Screen applicants, schedule interviews, manage road tests, and track candidates through a Kanban-style recruitment pipeline.</p>
+                    <h3>Employee Self Service (ESS)</h3>
+                    <p>Empower employees with 24/7 access to their personal information, payslips, leave requests, document submissions, and company announcements. Reduce HR workload while improving employee satisfaction.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-lucide="clipboard-check"></i>
+                        <i data-lucide="folder-lock"></i>
                     </div>
-                    <h3>New Hire Onboarding</h3>
-                    <p>Automated account creation with company email, onboarding checklists, document submission, and requirement verification.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i data-lucide="target"></i>
-                    </div>
-                    <h3>Performance Management</h3>
-                    <p>Set probationary goals, conduct 3rd and 5th month reviews, and track employee performance toward regularization.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i data-lucide="trophy"></i>
-                    </div>
-                    <h3>Social Recognition</h3>
-                    <p>Auto-generated welcome posts for new hires, peer-to-peer kudos, and a public recognition wall to celebrate achievements.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i data-lucide="shield"></i>
-                    </div>
-                    <h3>Role-Based Access</h3>
-                    <p>Dedicated portals for Admin, HR Staff, Managers, Employees, and Applicants with granular permission controls.</p>
+                    <h3>Employee Records Management</h3>
+                    <p>Securely store, organize, and manage all employee documents — contracts, licenses, certifications, medical records, and government IDs — with version control, audit trails, and expiration tracking.</p>
                 </div>
             </div>
         </div>
@@ -1004,59 +1008,51 @@ try {
         <div class="container">
             <div class="about-content">
                 <div class="about-text">
-                    <h2>Built for SLATE Freight Management</h2>
-                    <p>A complete HR management system designed specifically for freight and logistics operations. From hiring truck drivers to tracking probationary performance, every module is tailored to the unique needs of the transportation industry.</p>
+                    <h2>Built for Priority Handling Logistics, Inc.</h2>
+                    <p>A comprehensive HR management system designed specifically for the logistics and freight handling industry. From hiring skilled drivers and warehouse personnel to maintaining complete employee records and enabling self-service, every module is tailored to your operational needs.</p>
                     <div class="about-features">
                         <div class="about-feature-item">
                             <i data-lucide="check-circle"></i>
-                            <span>Job Requisition &rarr; Posting &rarr; Hiring Pipeline</span>
+                            <span>End-to-End Recruitment &amp; Hiring Pipeline</span>
                         </div>
                         <div class="about-feature-item">
                             <i data-lucide="check-circle"></i>
-                            <span>Automated Company Email &amp; Employee ID Generation</span>
+                            <span>Automated Onboarding with Document Verification</span>
                         </div>
                         <div class="about-feature-item">
                             <i data-lucide="check-circle"></i>
-                            <span>Onboarding Checklists with Document Verification</span>
+                            <span>Employee Self-Service Portal (ESS)</span>
                         </div>
                         <div class="about-feature-item">
                             <i data-lucide="check-circle"></i>
-                            <span>Probationary Goal Setting &amp; Performance Reviews</span>
+                            <span>Centralized Employee Records Management</span>
                         </div>
                         <div class="about-feature-item">
                             <i data-lucide="check-circle"></i>
-                            <span>Road Test Scheduling &amp; Driver License Tracking</span>
+                            <span>License &amp; Certification Expiration Tracking</span>
                         </div>
                         <div class="about-feature-item">
                             <i data-lucide="check-circle"></i>
-                            <span>Social Recognition Wall &amp; Welcome Posts</span>
+                            <span>Role-Based Access &amp; Secure Data Handling</span>
                         </div>
                     </div>
                 </div>
                 <div class="about-stats">
                     <div style="background: rgba(30, 41, 54, 0.6); padding: 3rem; border-radius: 16px; text-align: center; border: 1px solid rgba(58, 69, 84, 0.5); backdrop-filter: blur(10px);">
-                        <h3 style="font-size: 2.5rem; color: #0ea5e9; margin-bottom: 1rem; font-weight: 800;">5 Modules</h3>
-                        <p style="color: #cbd5e1; font-size: 1.1rem; margin-bottom: 2rem;">End-to-End HR Workflow</p>
+                        <h3 style="font-size: 2.5rem; color: #0ea5e9; margin-bottom: 1rem; font-weight: 800;">3 Core Modules</h3>
+                        <p style="color: #cbd5e1; font-size: 1.1rem; margin-bottom: 2rem;">Complete HR Workflow</p>
                         <div style="display: grid; gap: 0.75rem; margin-top: 1.5rem; text-align: left;">
                             <div style="background: rgba(14, 165, 233, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
-                                <span style="font-size: 1.25rem;">1</span>
-                                <span style="color: #cbd5e1; font-size: 0.9rem;">Recruitment Management</span>
+                                <i data-lucide="users" style="width: 1.2rem; height: 1.2rem; color: #0ea5e9;"></i>
+                                <span style="color: #cbd5e1; font-size: 0.9rem;">Core Human Resources</span>
                             </div>
                             <div style="background: rgba(139, 92, 246, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
-                                <span style="font-size: 1.25rem;">2</span>
-                                <span style="color: #cbd5e1; font-size: 0.9rem;">Applicant Management</span>
+                                <i data-lucide="user-check" style="width: 1.2rem; height: 1.2rem; color: #8b5cf6;"></i>
+                                <span style="color: #cbd5e1; font-size: 0.9rem;">Employee Self Service</span>
                             </div>
                             <div style="background: rgba(16, 185, 129, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
-                                <span style="font-size: 1.25rem;">3</span>
-                                <span style="color: #cbd5e1; font-size: 0.9rem;">New Hire Onboarding</span>
-                            </div>
-                            <div style="background: rgba(245, 158, 11, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
-                                <span style="font-size: 1.25rem;">4</span>
-                                <span style="color: #cbd5e1; font-size: 0.9rem;">Performance Management</span>
-                            </div>
-                            <div style="background: rgba(236, 72, 153, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
-                                <span style="font-size: 1.25rem;">5</span>
-                                <span style="color: #cbd5e1; font-size: 0.9rem;">Social Recognition</span>
+                                <i data-lucide="folder-lock" style="width: 1.2rem; height: 1.2rem; color: #10b981;"></i>
+                                <span style="color: #cbd5e1; font-size: 0.9rem;">Employee Records Management</span>
                             </div>
                         </div>
                     </div>
@@ -1069,10 +1065,10 @@ try {
     <section style="padding: 6rem 0; background: transparent;">
         <div class="container">
             <div class="section-header">
-                <div class="section-badge"> Quick Access</div>
+                <div class="section-badge">Quick Access</div>
                 <?php if ($is_logged_in): ?>
                     <h2 class="section-title">Welcome, <?php echo htmlspecialchars($_SESSION['first_name'] ?? 'User'); ?>!</h2>
-                    <p class="section-subtitle">You are logged in as <strong style="color: #0ea5e9;"><?php echo htmlspecialchars(str_replace('_', ' ', $_SESSION['role_type'] ?? 'User')); ?></strong> — access your portal below</p>
+                    <p class="section-subtitle">You are logged in as <strong style="color: #0ea5e9;"><?php echo htmlspecialchars(str_replace('_', ' ', $_SESSION['role_type'] ?? $_SESSION['role'] ?? 'User')); ?></strong> — access your portal below</p>
                 <?php else: ?>
                     <h2 class="section-title">Get Started Today</h2>
                     <p class="section-subtitle">Login to access your HR portal or browse our job openings</p>
@@ -1081,37 +1077,31 @@ try {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-top: 3rem;">
                 <?php if ($is_logged_in): ?>
                     <?php
-                        $role = $_SESSION['role_type'] ?? '';
+                        $role = $_SESSION['role_type'] ?? $_SESSION['role'] ?? '';
                         $portal_cards = [];
-                        if ($role === 'Admin') {
+                        if ($role === 'Admin' || $role === 'admin') {
                             $portal_cards = [
                                 ['icon' => 'shield', 'color' => '#ef4444', 'bg' => 'rgba(239,68,68,0.1)', 'title' => 'Admin Portal', 'desc' => 'System settings, user management, and audit logs', 'link' => 'views/admin/index.php'],
-                                ['icon' => 'users', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'HR Staff Portal', 'desc' => 'Recruitment pipeline, screening, and onboarding', 'link' => 'views/hr_staff/index.php'],
-                                ['icon' => 'briefcase', 'color' => '#f59e0b', 'bg' => 'rgba(245,158,11,0.1)', 'title' => 'Manager Portal', 'desc' => 'Job requisitions, interviews, and performance', 'link' => 'views/manager/index.php'],
+                                ['icon' => 'users', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'Core HR Portal', 'desc' => 'Recruitment, onboarding, and employee records', 'link' => 'views/hr_staff/index.php'],
+                                ['icon' => 'user-check', 'color' => '#8b5cf6', 'bg' => 'rgba(139,92,246,0.1)', 'title' => 'Employee Self Service', 'desc' => 'Leave requests, payslips, and personal info', 'link' => 'ess/login.php'],
                             ];
-                        } elseif ($role === 'HR_Staff') {
+                        } elseif ($role === 'HR_Staff' || $role === 'hr') {
                             $portal_cards = [
-                                ['icon' => 'kanban', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'HR Dashboard', 'desc' => 'Recruitment pipeline, screening, and onboarding tracker', 'link' => 'views/hr_staff/index.php'],
-                                ['icon' => 'file-plus', 'color' => '#8b5cf6', 'bg' => 'rgba(139,92,246,0.1)', 'title' => 'Job Requisitions', 'desc' => 'Review and approve manager requests', 'link' => 'views/hr_staff/index.php?page=job-requisitions'],
-                                ['icon' => 'briefcase', 'color' => '#10b981', 'bg' => 'rgba(16,185,129,0.1)', 'title' => 'Careers Page', 'desc' => 'View public job postings', 'link' => 'careers.php'],
+                                ['icon' => 'layout-dashboard', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'HR Dashboard', 'desc' => 'Recruitment pipeline, screening, and onboarding tracker', 'link' => 'views/hr_staff/index.php'],
+                                ['icon' => 'folder-lock', 'color' => '#10b981', 'bg' => 'rgba(16,185,129,0.1)', 'title' => 'Employee Records', 'desc' => 'Manage employee documents and certifications', 'link' => 'views/hr_staff/index.php?page=employee-records'],
+                                ['icon' => 'user-check', 'color' => '#8b5cf6', 'bg' => 'rgba(139,92,246,0.1)', 'title' => 'ESS Management', 'desc' => 'Manage employee self-service accounts', 'link' => 'views/hr_staff/index.php?page=ess'],
                             ];
-                        } elseif ($role === 'Manager') {
+                        } elseif ($role === 'Manager' || $role === 'manager') {
                             $portal_cards = [
-                                ['icon' => 'layout-dashboard', 'color' => '#f59e0b', 'bg' => 'rgba(245,158,11,0.1)', 'title' => 'Manager Dashboard', 'desc' => 'Team overview, requisitions, and performance reviews', 'link' => 'views/manager/index.php'],
+                                ['icon' => 'layout-dashboard', 'color' => '#f59e0b', 'bg' => 'rgba(245,158,11,0.1)', 'title' => 'Manager Dashboard', 'desc' => 'Team overview, requisitions, and approvals', 'link' => 'views/manager/index.php'],
                                 ['icon' => 'file-plus', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'Job Requisitions', 'desc' => 'Request new staff for your department', 'link' => 'views/manager/index.php?page=job-requisitions'],
-                                ['icon' => 'target', 'color' => '#10b981', 'bg' => 'rgba(16,185,129,0.1)', 'title' => 'Goal Setting', 'desc' => 'Set and track probationary goals', 'link' => 'views/manager/index.php?page=goal-setting'],
+                                ['icon' => 'users', 'color' => '#10b981', 'bg' => 'rgba(16,185,129,0.1)', 'title' => 'Team Management', 'desc' => 'View and manage your team members', 'link' => 'views/manager/index.php?page=team'],
                             ];
                         } elseif ($role === 'Employee') {
                             $portal_cards = [
-                                ['icon' => 'layout-dashboard', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'Employee Dashboard', 'desc' => 'Onboarding progress, profile, and kudos', 'link' => 'views/employee/index.php'],
-                                ['icon' => 'list-checks', 'color' => '#10b981', 'bg' => 'rgba(16,185,129,0.1)', 'title' => 'Onboarding', 'desc' => 'Complete your onboarding checklist', 'link' => 'views/employee/index.php?page=onboarding'],
-                                ['icon' => 'trophy', 'color' => '#f59e0b', 'bg' => 'rgba(245,158,11,0.1)', 'title' => 'Recognition Wall', 'desc' => 'Give kudos and celebrate achievements', 'link' => 'views/employee/index.php?page=recognition-wall'],
-                            ];
-                        } elseif ($role === 'Applicant') {
-                            $portal_cards = [
-                                ['icon' => 'layout-dashboard', 'color' => '#8b5cf6', 'bg' => 'rgba(139,92,246,0.1)', 'title' => 'Applicant Dashboard', 'desc' => 'Track your applications and interview schedule', 'link' => 'views/applicant/index.php'],
-                                ['icon' => 'file-text', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'My Applications', 'desc' => 'View status of all your applications', 'link' => 'views/applicant/index.php?page=applications'],
-                                ['icon' => 'briefcase', 'color' => '#10b981', 'bg' => 'rgba(16,185,129,0.1)', 'title' => 'Browse Jobs', 'desc' => 'Find and apply for open positions', 'link' => '#jobs'],
+                                ['icon' => 'layout-dashboard', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'Employee Dashboard', 'desc' => 'Your profile, attendance, and requests', 'link' => 'ess/index.php'],
+                                ['icon' => 'calendar', 'color' => '#10b981', 'bg' => 'rgba(16,185,129,0.1)', 'title' => 'Leave Requests', 'desc' => 'File and track your leave applications', 'link' => 'ess/leave-requests.php'],
+                                ['icon' => 'file-text', 'color' => '#f59e0b', 'bg' => 'rgba(245,158,11,0.1)', 'title' => 'My Documents', 'desc' => 'Access your payslips and certificates', 'link' => 'ess/documents.php'],
                             ];
                         } else {
                             $portal_cards = [
@@ -1134,18 +1124,27 @@ try {
                         <div style="width: 70px; height: 70px; margin: 0 auto 1.5rem; background: rgba(14, 165, 233, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
                             <i data-lucide="log-in" style="width: 2.5rem; height: 2.5rem; color: #0ea5e9;"></i>
                         </div>
-                        <h3 style="margin-bottom: 1rem; color: #ffffff; font-size: 1.3rem;">Login</h3>
+                        <h3 style="margin-bottom: 1rem; color: #ffffff; font-size: 1.3rem;">HR Portal Login</h3>
                         <p style="color: #94a3b8; margin-bottom: 1.5rem; line-height: 1.6;">Access your HR management system</p>
                         <a href="login.php" style="background: #0ea5e9; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.background='#0284c7'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#0ea5e9'; this.style.transform='translateY(0)'">Login</a>
                     </div>
                     
-                    <div style="background: rgba(30, 41, 54, 0.6); padding: 2.5rem; border-radius: 16px; text-align: center; border: 1px solid rgba(58, 69, 84, 0.5); backdrop-filter: blur(10px); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='rgba(14, 165, 233, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(58, 69, 84, 0.5)'">
-                        <div style="width: 70px; height: 70px; margin: 0 auto 1.5rem; background: rgba(14, 165, 233, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="briefcase" style="width: 2.5rem; height: 2.5rem; color: #0ea5e9;"></i>
+                    <div style="background: rgba(30, 41, 54, 0.6); padding: 2.5rem; border-radius: 16px; text-align: center; border: 1px solid rgba(58, 69, 84, 0.5); backdrop-filter: blur(10px); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='rgba(139, 92, 246, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(58, 69, 84, 0.5)'">
+                        <div style="width: 70px; height: 70px; margin: 0 auto 1.5rem; background: rgba(139, 92, 246, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="user-check" style="width: 2.5rem; height: 2.5rem; color: #8b5cf6;"></i>
+                        </div>
+                        <h3 style="margin-bottom: 1rem; color: #ffffff; font-size: 1.3rem;">Employee Self Service</h3>
+                        <p style="color: #94a3b8; margin-bottom: 1.5rem; line-height: 1.6;">Access your ESS portal</p>
+                        <a href="ess/login.php" style="background: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.opacity='0.85'; this.style.transform='translateY(-2px)'" onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)'">ESS Login</a>
+                    </div>
+
+                    <div style="background: rgba(30, 41, 54, 0.6); padding: 2.5rem; border-radius: 16px; text-align: center; border: 1px solid rgba(58, 69, 84, 0.5); backdrop-filter: blur(10px); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='rgba(16, 185, 129, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(58, 69, 84, 0.5)'">
+                        <div style="width: 70px; height: 70px; margin: 0 auto 1.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="briefcase" style="width: 2.5rem; height: 2.5rem; color: #10b981;"></i>
                         </div>
                         <h3 style="margin-bottom: 1rem; color: #ffffff; font-size: 1.3rem;">Apply for Jobs</h3>
                         <p style="color: #94a3b8; margin-bottom: 1.5rem; line-height: 1.6;">Browse and apply for open positions</p>
-                        <a href="#jobs" style="background: #0ea5e9; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.background='#0284c7'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#0ea5e9'; this.style.transform='translateY(0)'">View Jobs</a>
+                        <a href="#jobs" style="background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.opacity='0.85'; this.style.transform='translateY(-2px)'" onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)'">View Jobs</a>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1155,8 +1154,12 @@ try {
     <!-- Footer -->
     <footer style="background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); color: white; padding: 3rem 0; text-align: center; border-top: 1px solid rgba(58, 69, 84, 0.5);">
         <div class="container">
-            <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 1rem;">&copy; 2025 SLATE Freight Management System. All rights reserved.</p>
-           
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 1rem;">
+                <img src="assets/logo.jpg" alt="Priority Handling Logistics Logo" style="width: 40px; height: 40px; object-fit: contain; border-radius: 8px;">
+                <span style="color: #ffffff; font-weight: 600; font-size: 1rem;">Priority Handling Logistics, Inc.</span>
+            </div>
+            <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 0.5rem;">&copy; <?php echo date('Y'); ?> Priority Handling Logistics, Inc. All rights reserved.</p>
+            <p style="color: #64748b; font-size: 0.85rem;">HR Management System — Core HR | Employee Self Service | Employee Records Management</p>
         </div>
     </footer>
     
@@ -1165,13 +1168,13 @@ try {
         window.addEventListener('load', function() {
             setTimeout(function() {
                 const loadingScreen = document.getElementById('loadingScreen');
-                loadingScreen.classList.add('hidden');
-                
-                // Remove from DOM after transition
-                setTimeout(function() {
-                    loadingScreen.remove();
-                }, 500);
-            }, 800); // Show loading screen for at least 800ms
+                if (loadingScreen) {
+                    loadingScreen.classList.add('hidden');
+                    setTimeout(function() {
+                        loadingScreen.remove();
+                    }, 500);
+                }
+            }, 800);
         });
 
         // Smooth scrolling for navigation links
