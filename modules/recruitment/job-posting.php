@@ -4,6 +4,9 @@
 // API Configuration
 define('API_URL', 'https://hsi.qcprotektado.com/recruitment_api.php');
 
+// Base URL for the application links (Priority Handling Logistics domain on HostForge)
+define('APP_BASE_URL', 'https://recruitment-onboarding-hr1-freight.hostforgeplatforms.com');
+
 // Handle actions
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 $message = '';
@@ -13,8 +16,7 @@ $error = '';
 function generateApplicationLink($job_code, $expiration_days = 30) {
     $link_code = bin2hex(random_bytes(16));
     $expiration = date('Y-m-d H:i:s', strtotime("+{$expiration_days} days"));
-    $base_url = 'https://recruitment-onboarding-hr1-freight.hostforgeplatforms.com/';
-    $application_link = $base_url . '/apply.php?code=' . $link_code;
+    $application_link = APP_BASE_URL . '/apply.php?code=' . $link_code;
     
     return [
         'link_code' => $link_code,

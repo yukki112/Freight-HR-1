@@ -434,9 +434,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </button>
                     </form>
 
-                    <div class="signup-link">
-                        Don't have an account? <a href="#">Contact Administrator</a>
-                    </div>
+                    
 
                     <a href="index.php" class="back-home">
                         <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back to Home

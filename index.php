@@ -975,7 +975,7 @@ try {
             <div class="section-header">
                 <div class="section-badge">System Modules</div>
                 <h2 class="section-title">Core HR Modules for Logistics Operations</h2>
-                <p class="section-subtitle">Three integrated modules designed to streamline your workforce management</p>
+                <p class="section-subtitle">Six integrated modules designed to streamline your workforce management</p>
             </div>
             <div class="features-grid">
                 <div class="feature-card">
@@ -984,6 +984,27 @@ try {
                     </div>
                     <h3>Core Human Resources</h3>
                     <p>Centralized HR operations covering recruitment, hiring, onboarding, and workforce planning. Manage job postings, applicant screening, interviews, and seamless new-hire integration — all tailored for logistics teams.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="file-plus"></i>
+                    </div>
+                    <h3>Recruitment Management</h3>
+                    <p>Create and publish job requisitions, generate shareable application links, and manage the full hiring pipeline from posting to offer. Built-in approval workflows ensure every hire is properly authorized.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="user-search"></i>
+                    </div>
+                    <h3>Applicant Management</h3>
+                    <p>Track every candidate through the hiring funnel — screening, evaluations, assessments, and interviews. Kanban-style pipeline, automated status updates, and full applicant history in one view.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="clipboard-check"></i>
+                    </div>
+                    <h3>Onboarding Management</h3>
+                    <p>Seamless new-hire experience with document submission portals, automated email invitations, requirement checklists, and progress tracking. Get new team members productive faster.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -1017,6 +1038,10 @@ try {
                         </div>
                         <div class="about-feature-item">
                             <i data-lucide="check-circle"></i>
+                            <span>Applicant Tracking with Automated Workflows</span>
+                        </div>
+                        <div class="about-feature-item">
+                            <i data-lucide="check-circle"></i>
                             <span>Automated Onboarding with Document Verification</span>
                         </div>
                         <div class="about-feature-item">
@@ -1039,7 +1064,7 @@ try {
                 </div>
                 <div class="about-stats">
                     <div style="background: rgba(30, 41, 54, 0.6); padding: 3rem; border-radius: 16px; text-align: center; border: 1px solid rgba(58, 69, 84, 0.5); backdrop-filter: blur(10px);">
-                        <h3 style="font-size: 2.5rem; color: #0ea5e9; margin-bottom: 1rem; font-weight: 800;">3 Core Modules</h3>
+                        <h3 style="font-size: 2.5rem; color: #0ea5e9; margin-bottom: 1rem; font-weight: 800;">6 Modules</h3>
                         <p style="color: #cbd5e1; font-size: 1.1rem; margin-bottom: 2rem;">Complete HR Workflow</p>
                         <div style="display: grid; gap: 0.75rem; margin-top: 1.5rem; text-align: left;">
                             <div style="background: rgba(14, 165, 233, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
@@ -1047,7 +1072,19 @@ try {
                                 <span style="color: #cbd5e1; font-size: 0.9rem;">Core Human Resources</span>
                             </div>
                             <div style="background: rgba(139, 92, 246, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
-                                <i data-lucide="user-check" style="width: 1.2rem; height: 1.2rem; color: #8b5cf6;"></i>
+                                <i data-lucide="file-plus" style="width: 1.2rem; height: 1.2rem; color: #8b5cf6;"></i>
+                                <span style="color: #cbd5e1; font-size: 0.9rem;">Recruitment Management</span>
+                            </div>
+                            <div style="background: rgba(245, 158, 11, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
+                                <i data-lucide="user-search" style="width: 1.2rem; height: 1.2rem; color: #f59e0b;"></i>
+                                <span style="color: #cbd5e1; font-size: 0.9rem;">Applicant Management</span>
+                            </div>
+                            <div style="background: rgba(236, 72, 153, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
+                                <i data-lucide="clipboard-check" style="width: 1.2rem; height: 1.2rem; color: #ec4899;"></i>
+                                <span style="color: #cbd5e1; font-size: 0.9rem;">Onboarding Management</span>
+                            </div>
+                            <div style="background: rgba(14, 165, 233, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
+                                <i data-lucide="user-check" style="width: 1.2rem; height: 1.2rem; color: #0ea5e9;"></i>
                                 <span style="color: #cbd5e1; font-size: 0.9rem;">Employee Self Service</span>
                             </div>
                             <div style="background: rgba(16, 185, 129, 0.1); padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;">
@@ -1083,7 +1120,7 @@ try {
                             $portal_cards = [
                                 ['icon' => 'shield', 'color' => '#ef4444', 'bg' => 'rgba(239,68,68,0.1)', 'title' => 'Admin Portal', 'desc' => 'System settings, user management, and audit logs', 'link' => 'views/admin/index.php'],
                                 ['icon' => 'users', 'color' => '#0ea5e9', 'bg' => 'rgba(14,165,233,0.1)', 'title' => 'Core HR Portal', 'desc' => 'Recruitment, onboarding, and employee records', 'link' => 'views/hr_staff/index.php'],
-                                ['icon' => 'user-check', 'color' => '#8b5cf6', 'bg' => 'rgba(139,92,246,0.1)', 'title' => 'Employee Self Service', 'desc' => 'Leave requests, payslips, and personal info', 'link' => 'ess/login.php'],
+                                ['icon' => 'user-check', 'color' => '#8b5cf6', 'bg' => 'rgba(139,92,246,0.1)', 'title' => 'Employee Self Service', 'desc' => 'Leave requests, payslips, and personal info', 'link' => 'ess_login.php'],
                             ];
                         } elseif ($role === 'HR_Staff' || $role === 'hr') {
                             $portal_cards = [
@@ -1135,7 +1172,7 @@ try {
                         </div>
                         <h3 style="margin-bottom: 1rem; color: #ffffff; font-size: 1.3rem;">Employee Self Service</h3>
                         <p style="color: #94a3b8; margin-bottom: 1.5rem; line-height: 1.6;">Access your ESS portal</p>
-                        <a href="ess/login.php" style="background: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.opacity='0.85'; this.style.transform='translateY(-2px)'" onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)'">ESS Login</a>
+                        <a href="ess_login.php" style="background: #8b5cf6; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-block; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.opacity='0.85'; this.style.transform='translateY(-2px)'" onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)'">ESS Login</a>
                     </div>
 
                     <div style="background: rgba(30, 41, 54, 0.6); padding: 2.5rem; border-radius: 16px; text-align: center; border: 1px solid rgba(58, 69, 84, 0.5); backdrop-filter: blur(10px); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='rgba(16, 185, 129, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(58, 69, 84, 0.5)'">
@@ -1159,7 +1196,7 @@ try {
                 <span style="color: #ffffff; font-weight: 600; font-size: 1rem;">Priority Handling Logistics, Inc.</span>
             </div>
             <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 0.5rem;">&copy; <?php echo date('Y'); ?> Priority Handling Logistics, Inc. All rights reserved.</p>
-            <p style="color: #64748b; font-size: 0.85rem;">HR Management System — Core HR | Employee Self Service | Employee Records Management</p>
+            <p style="color: #64748b; font-size: 0.85rem;">HR Management System — Core HR | Recruitment | Applicant | Onboarding | ESS | Records Management</p>
         </div>
     </footer>
     
