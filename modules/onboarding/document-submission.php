@@ -10,7 +10,7 @@ require_once 'config/mail_config.php';
 
 // Define base URL for the application
 if (!defined('BASE_URL')) {
-    define('BASE_URL', '/hr1/');
+    define('BASE_URL', '/');
 }
 
 /**
@@ -35,12 +35,12 @@ function getDocumentUrl($file_path) {
     $file_path = ltrim($file_path, '/');
     
     // Step 3: If it already starts with hr1/, strip that prefix so we don't double it
-    if (strpos($file_path, 'hr1/') === 0) {
+    if (strpos($file_path, '/') === 0) {
         $file_path = substr($file_path, 4);
     }
     
     // Step 4: Force /hr1/ prefix
-    return '/hr1/' . $file_path;
+    return '/' . $file_path;
 }
 
 // Handle actions
@@ -147,7 +147,7 @@ function generateDocumentUploadLink($new_hire_id, $expiration_days = 7) {
     
     $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'];
-    $upload_link = $protocol . $host . '/hr1/public/onboarding-upload.php?token=' . $token;
+    $upload_link = $protocol . $host . '/public/onboarding-upload.php?token=' . $token;
     
     return [
         'token' => $token,
