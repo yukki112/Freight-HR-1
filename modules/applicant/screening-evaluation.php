@@ -27,20 +27,21 @@ try {
             INDEX idx_result (screening_result)
         )
     ");
-} catch (Exception $e) { /* Table might already exist */ }
+} catch (Exception $e) {
+    // Table might already exist
+}
 
 // ============================================================
 // HANDLE FORM SUBMISSION
 // ============================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evaluation'])) {
     $applicant_id        = (int)$_POST['applicant_id'];
-    $screening_score     = max(0, min(100, (int)$_POST['screening_score']));
-    $qualification_match = max(0, min(100, (int)$_POST['qualification_match']));
+    $screening_score     = (int)$_POST['screening_score'];
+    $qualification_match = (int)$_POST['qualification_match'];
     $screening_notes     = $_POST['screening_notes'] ?? '';
     $screening_result    = $_POST['screening_result'] ?? 'pending';
     $update_status       = isset($_POST['update_status']) ? 1 : 0;
 
-    // Fetch applicant + job details
     $stmt = $pdo->prepare("
         SELECT a.*, jp.title AS job_title, jp.job_code, jp.department
         FROM job_applications a
@@ -53,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evaluation'])) {
     if (!$applicant) {
         $error_message = "Applicant not found.";
     } else {
-        // Save / update screening evaluation
         $stmt = $pdo->prepare("SELECT id FROM screening_evaluations WHERE applicant_id = ?");
         $stmt->execute([$applicant_id]);
         $existing = $stmt->fetch();
@@ -75,16 +75,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evaluation'])) {
             $stmt->execute([$applicant_id, $screening_score, $qualification_match, $screening_notes, $_SESSION['user_id'], $screening_result]);
         }
 
-        // ============================================================
-        // IF PASSED -> Determine assessment requirement + send email
-        // ============================================================
+        // IF PASSED -> send email + update status automatically
         if ($screening_result === 'pass' && $update_status) {
             $department  = $applicant['department'] ?? '';
             $jobTitle    = $applicant['job_title'] ?? $applicant['position_applied'] ?? 'the position';
             $needsAssess = requiresAssessment($department, $jobTitle);
 
             $stmt = $pdo->prepare("UPDATE job_applications SET requires_assessment = ?, assessment_status = ? WHERE id = ?");
-            $stmt->execute([$needsAssess ? 1 : 0, $needsAssess ? 'pending' : 'not_required', $applicant_id]);
+            $stmt->execute([
+                $needsAssess ? 1 : 0,
+                $needsAssess ? 'pending' : 'not_required',
+                $applicant_id
+            ]);
 
             $fullName = trim(($applicant['first_name'] ?? '') . ' ' . ($applicant['last_name'] ?? ''));
             $emailResult = ['success' => false, 'message' => ''];
@@ -98,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evaluation'])) {
                                   . '&token=' . urlencode(bin2hex(random_bytes(16)));
 
                 $emailResult = sendScreeningPassedWithAssessmentEmail(
-                    $applicant['email'], $fullName,
+                    $applicant['email'],
+                    $fullName,
                     [
                         'application_number' => $applicant['application_number'],
                         'job_title'          => $jobTitle,
@@ -133,7 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evaluation'])) {
                 $new_status = 'shortlisted';
 
                 $emailResult = sendScreeningPassedNoAssessmentEmail(
-                    $applicant['email'], $fullName,
+                    $applicant['email'],
+                    $fullName,
                     [
                         'application_number' => $applicant['application_number'],
                         'job_title'          => $jobTitle,
@@ -168,6 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_evaluation'])) {
             $stmt->execute([$status_note, $applicant_id]);
 
             logActivity($pdo, $_SESSION['user_id'], 'update_applicant_status', "Updated applicant #{$applicant_id} status to {$new_status} via screening");
+
             $success_message = "Screening evaluation saved! " . ($email_status ?? '');
         }
         elseif ($screening_result === 'fail' && $update_status) {
@@ -199,10 +204,18 @@ $department_filter = $_GET['department'] ?? '';
 $query = "
     SELECT 
         a.*,
-        jp.title as job_title, jp.job_code, jp.department,
-        jp.experience_required, jp.education_required, jp.license_required,
-        se.id as evaluation_id, se.screening_score, se.qualification_match,
-        se.screening_notes, se.screening_result, se.evaluation_date,
+        jp.title as job_title,
+        jp.job_code,
+        jp.department,
+        jp.experience_required,
+        jp.education_required,
+        jp.license_required,
+        se.id as evaluation_id,
+        se.screening_score,
+        se.qualification_match,
+        se.screening_notes,
+        se.screening_result,
+        se.evaluation_date,
         u.full_name as evaluator_name,
         CASE 
             WHEN se.id IS NOT NULL THEN 
@@ -295,6 +308,9 @@ $dept_stats = $pdo->query("
 
 $departments = $pdo->query("SELECT DISTINCT department FROM job_postings WHERE department IS NOT NULL ORDER BY department")->fetchAll();
 
+// ============================================================
+// HELPERS
+// ============================================================
 function getApplicantPhoto($applicant) {
     if (!empty($applicant['photo_path']) && file_exists($applicant['photo_path'])) {
         return htmlspecialchars($applicant['photo_path']);
@@ -309,6 +325,7 @@ function getApplicantPhoto($applicant) {
     --primary-light: #1e5ca8;
     --primary-dark: #0a3a70;
     --primary-transparent: rgba(14, 76, 146, 0.1);
+    --primary-transparent-2: rgba(14, 76, 146, 0.2);
     --success-color: #27ae60;
     --warning-color: #f39c12;
     --danger-color: #e74c3c;
@@ -366,6 +383,9 @@ function getApplicantPhoto($applicant) {
 .applicant-photo-medium { width: 45px; height: 45px; border-radius: 12px; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(14, 76, 146, 0.2); background: linear-gradient(135deg, #0e4c92 0%, #4086e4 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 16px; flex-shrink: 0; }
 .photo-fallback-medium { width: 45px; height: 45px; border-radius: 12px; background: linear-gradient(135deg, #0e4c92 0%, #4086e4 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 16px; flex-shrink: 0; }
 
+.modal-applicant-photo { width: 70px; height: 70px; border-radius: 15px; object-fit: cover; border: 3px solid #fff; box-shadow: 0 5px 15px rgba(14, 76, 146, 0.3); background: linear-gradient(135deg, #0e4c92 0%, #4086e4 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 24px; }
+.modal-photo-fallback { width: 70px; height: 70px; border-radius: 15px; background: linear-gradient(135deg, #0e4c92 0%, #4086e4 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 24px; box-shadow: 0 5px 15px rgba(14, 76, 146, 0.3); }
+
 .category-badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
 .badge-success { background: #27ae6020; color: #27ae60; }
 .badge-warning { background: #f39c1220; color: #f39c12; }
@@ -387,500 +407,62 @@ function getApplicantPhoto($applicant) {
 .alert-success { background: #d4edda; color: #155724; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #c3e6cb; }
 .alert-danger { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #f5c6cb; }
 
-/* ==========================================
-   REDESIGNED MODAL
-   ========================================== */
-.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 25, 41, 0.75); backdrop-filter: blur(6px); z-index: 1000; align-items: flex-start; justify-content: center; padding: 30px 15px; overflow-y: auto; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; }
 .modal.active { display: flex; }
+.modal-content { background: white; border-radius: 20px; padding: 30px; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eef2f6; }
+.modal-header h3 { font-size: 20px; font-weight: 600; color: #2c3e50; margin: 0; }
+.modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b; transition: color 0.3s; }
+.modal-close:hover { color: #e74c3c; }
 
-.modal-content {
-    background: #ffffff;
-    border-radius: 24px;
-    max-width: 780px;
-    width: 100%;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
-    overflow: hidden;
-    animation: modalSlide 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-    position: relative;
-    margin: auto;
-}
-@keyframes modalSlide {
-    from { opacity: 0; transform: translateY(30px) scale(0.97); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
+.modal-applicant-info { background: #f8fafd; border-radius: 15px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
+.modal-details { flex: 1; }
+.modal-details h4 { font-size: 18px; font-weight: 600; color: #2c3e50; margin: 0 0 5px 0; }
+.modal-details p { margin: 3px 0; font-size: 14px; color: #64748b; }
+.modal-details i { color: #0e4c92; width: 20px; }
 
-/* Gradient header bar */
-.modal-header {
-    background: linear-gradient(135deg, #0e4c92 0%, #4086e4 100%);
-    padding: 22px 28px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: white;
-    position: relative;
-    overflow: hidden;
-}
-.modal-header::before {
-    content: '';
-    position: absolute;
-    width: 200px; height: 200px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 50%;
-    top: -80px; right: -40px;
-}
-.modal-header::after {
-    content: '';
-    position: absolute;
-    width: 120px; height: 120px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 50%;
-    bottom: -60px; left: 30%;
-}
-.modal-header h3 {
-    font-size: 18px; font-weight: 600; margin: 0;
-    display: flex; align-items: center; gap: 10px;
-    position: relative; z-index: 2;
-}
-.modal-header h3 i {
-    background: rgba(255,255,255,0.2);
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-}
-.modal-close {
-    background: rgba(255,255,255,0.15);
-    border: none;
-    width: 34px; height: 34px;
-    border-radius: 10px;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.3s;
-    text-decoration: none;
-    position: relative; z-index: 2;
-    line-height: 1;
-}
-.modal-close:hover { background: rgba(255,255,255,0.3); transform: rotate(90deg); }
+.requirements-box { background: #f8fafd; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+.requirements-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px; }
+.requirement-item { background: white; border-radius: 12px; padding: 12px; border: 1px solid #eef2f6; }
+.requirement-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+.requirement-value { font-size: 14px; font-weight: 600; color: #2c3e50; }
 
-/* Modal body wrapper */
-.modal-body { padding: 26px 28px 0; }
+.assessment-notice { background: #fff8e1; border-left: 4px solid #f39c12; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; color: #7a5c00; }
+.assessment-notice.no-assess { background: #e8fff1; border-left-color: #27ae60; color: #155724; }
+.assessment-notice strong { display: block; margin-bottom: 4px; }
 
-/* Applicant hero card */
-.applicant-hero {
-    background: linear-gradient(135deg, #f8fafd 0%, #eef4fc 100%);
-    border-radius: 18px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    margin-bottom: 20px;
-    border: 1px solid #e2e8f0;
-    position: relative;
-    overflow: hidden;
-}
-.applicant-hero::after {
-    content: '';
-    position: absolute;
-    width: 100px; height: 100px;
-    background: radial-gradient(circle, rgba(14,76,146,0.08) 0%, transparent 70%);
-    border-radius: 50%;
-    top: -30px; right: -30px;
-}
-.applicant-avatar {
-    width: 76px; height: 76px;
-    border-radius: 20px;
-    flex-shrink: 0;
-    object-fit: cover;
-    border: 3px solid white;
-    box-shadow: 0 8px 20px rgba(14, 76, 146, 0.25);
-    background: linear-gradient(135deg, #0e4c92 0%, #4086e4 100%);
-    display: flex; align-items: center; justify-content: center;
-    color: white; font-weight: 700; font-size: 26px;
-}
-.applicant-details { flex: 1; position: relative; z-index: 2; }
-.applicant-details h4 { font-size: 19px; font-weight: 700; color: #1e293b; margin: 0 0 8px 0; }
-.applicant-meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: #64748b; }
-.applicant-meta span { display: flex; align-items: center; gap: 6px; }
-.applicant-meta i { color: #0e4c92; font-size: 12px; }
+.evaluation-form { margin-top: 20px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; color: #2c3e50; margin-bottom: 5px; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; transition: all 0.3s; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #0e4c92; box-shadow: 0 0 0 3px rgba(14, 76, 146, 0.1); }
+.form-group textarea { min-height: 100px; resize: vertical; }
+.checkbox-group { display: flex; align-items: center; gap: 10px; margin: 15px 0; }
+.checkbox-group input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #0e4c92; }
 
-/* Assessment banner */
-.assessment-banner {
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 18px;
-    border-radius: 14px;
-    margin-bottom: 22px;
-    font-size: 13px;
-    line-height: 1.5;
-    border-left: 4px solid;
-    animation: fadeIn 0.4s;
-}
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.assessment-banner.required {
-    background: linear-gradient(135deg, #fff8e1 0%, #fffbf0 100%);
-    border-left-color: #f39c12;
-    color: #7a5c00;
-}
-.assessment-banner.not-required {
-    background: linear-gradient(135deg, #e8fff1 0%, #f0fff7 100%);
-    border-left-color: #27ae60;
-    color: #155724;
-}
-.assessment-banner-icon {
-    width: 40px; height: 40px;
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-    background: rgba(255,255,255,0.6);
-}
-.assessment-banner.required .assessment-banner-icon { color: #f39c12; }
-.assessment-banner.not-required .assessment-banner-icon { color: #27ae60; }
-.assessment-banner strong { display: block; font-weight: 700; margin-bottom: 3px; font-size: 13.5px; }
+.score-input-group { display: flex; align-items: center; gap: 10px; }
+.score-input-group input[type="range"] { flex: 1; height: 6px; -webkit-appearance: none; background: #eef2f6; border-radius: 3px; }
+.score-input-group input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: #0e4c92; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 5px rgba(14, 76, 146, 0.3); }
+.score-value { min-width: 50px; text-align: center; font-weight: 600; color: #0e4c92; }
 
-/* Requirements grid */
-.req-section { margin-bottom: 22px; }
-.req-section-title {
-    font-size: 12px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 1px; color: #64748b;
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 12px;
-}
-.req-section-title i { color: #0e4c92; }
-.req-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 10px;
-}
-.req-card {
-    background: #f8fafd;
-    border: 1px solid #eef2f6;
-    border-radius: 12px;
-    padding: 12px 14px;
-    transition: all 0.3s;
-}
-.req-card:hover { border-color: #0e4c92; background: white; box-shadow: 0 4px 12px rgba(14,76,146,0.06); }
-.req-card-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; font-weight: 600; }
-.req-card-value { font-size: 13px; font-weight: 600; color: #1e293b; line-height: 1.4; }
+.match-indicator { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
+.match-bar { flex: 1; height: 8px; background: #eef2f6; border-radius: 4px; overflow: hidden; }
+.match-progress { height: 100%; background: linear-gradient(90deg, #0e4c92, #4086e4); border-radius: 4px; }
 
-/* ==========================================
-   SCORE INPUT — dual (slider + number)
-   ========================================== */
-.score-block {
-    background: #f8fafd;
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 18px;
-    border: 1px solid #eef2f6;
-    transition: all 0.3s;
-}
-.score-block:hover { border-color: #0e4c92; box-shadow: 0 4px 16px rgba(14,76,146,0.06); }
+.modal-footer { margin-top: 25px; padding-top: 20px; border-top: 2px solid #eef2f6; display: flex; justify-content: flex-end; gap: 15px; flex-wrap: wrap; }
 
-.score-block-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px;
-}
-.score-block-title {
-    font-size: 13px; font-weight: 700; color: #1e293b;
-    display: flex; align-items: center; gap: 8px;
-}
-.score-block-title i {
-    width: 28px; height: 28px;
-    background: rgba(14, 76, 146, 0.1);
-    color: #0e4c92;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-}
-
-/* Big score number input */
-.score-number-wrap {
-    display: flex; align-items: center; gap: 6px;
-    background: white;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 4px 10px;
-    transition: all 0.3s;
-}
-.score-number-wrap:focus-within {
-    border-color: #0e4c92;
-    box-shadow: 0 0 0 4px rgba(14, 76, 146, 0.1);
-}
-.score-number {
-    width: 56px;
-    border: none;
-    outline: none;
-    font-size: 22px;
-    font-weight: 800;
-    color: #0e4c92;
-    text-align: center;
-    background: transparent;
-    font-family: inherit;
-    -moz-appearance: textfield;
-}
-.score-number::-webkit-outer-spin-button,
-.score-number::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-.score-suffix { font-size: 14px; font-weight: 700; color: #94a3b8; }
-
-/* Range slider */
-.score-slider {
-    width: 100%;
-    height: 8px;
-    -webkit-appearance: none;
-    appearance: none;
-    background: #e2e8f0;
-    border-radius: 4px;
-    outline: none;
-    cursor: pointer;
-    margin-top: 4px;
-    background-image: linear-gradient(90deg, #0e4c92 0%, #4086e4 100%);
-    background-repeat: no-repeat;
-    background-size: var(--slider-fill, 70%) 100%;
-}
-.score-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    background: white;
-    border: 3px solid #0e4c92;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(14, 76, 146, 0.3);
-    transition: transform 0.2s;
-}
-.score-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
-.score-slider::-moz-range-thumb {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    background: white;
-    border: 3px solid #0e4c92;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(14, 76, 146, 0.3);
-}
-
-.score-scale {
-    display: flex; justify-content: space-between;
-    margin-top: 6px;
-    font-size: 10px; color: #94a3b8; font-weight: 600;
-    letter-spacing: 0.3px;
-}
-
-.score-hint {
-    font-size: 11px;
-    color: #94a3b8;
-    margin-top: 8px;
-    display: flex; align-items: center; gap: 5px;
-}
-
-/* Match progress bar */
-.match-progress-container {
-    margin-top: 10px;
-    height: 10px;
-    background: #e2e8f0;
-    border-radius: 5px;
-    overflow: hidden;
-    position: relative;
-}
-.match-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #0e4c92 0%, #4086e4 100%);
-    border-radius: 5px;
-    transition: width 0.3s ease;
-    position: relative;
-}
-.match-progress-fill::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-    animation: shimmer 2s infinite;
-}
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-
-/* Notes textarea */
-.notes-block {
-    background: #f8fafd;
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 18px;
-    border: 1px solid #eef2f6;
-}
-.notes-block label {
-    font-size: 13px; font-weight: 700; color: #1e293b;
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 10px;
-}
-.notes-block label i {
-    width: 28px; height: 28px;
-    background: rgba(14, 76, 146, 0.1);
-    color: #0e4c92;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-}
-.notes-block textarea {
-    width: 100%;
-    min-height: 90px;
-    padding: 12px 14px;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    font-size: 13.5px;
-    font-family: inherit;
-    resize: vertical;
-    transition: all 0.3s;
-    background: white;
-    color: #1e293b;
-}
-.notes-block textarea:focus {
-    outline: none;
-    border-color: #0e4c92;
-    box-shadow: 0 0 0 4px rgba(14, 76, 146, 0.1);
-}
-
-/* Result selector — big pill buttons */
-.result-block { margin-bottom: 18px; }
-.result-label {
-    font-size: 13px; font-weight: 700; color: #1e293b;
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 12px;
-}
-.result-label i {
-    width: 28px; height: 28px;
-    background: rgba(14, 76, 146, 0.1);
-    color: #0e4c92;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-}
-.result-options {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-}
-.result-option { position: relative; cursor: pointer; }
-.result-option input { position: absolute; opacity: 0; pointer-events: none; }
-.result-option-inner {
-    padding: 14px 10px;
-    border: 2px solid #e2e8f0;
-    border-radius: 14px;
-    text-align: center;
-    transition: all 0.3s;
-    background: white;
-}
-.result-option-inner i {
-    font-size: 20px;
-    display: block;
-    margin-bottom: 6px;
-    color: #94a3b8;
-    transition: all 0.3s;
-}
-.result-option-inner span {
-    font-size: 12px;
-    font-weight: 700;
-    color: #64748b;
-    display: block;
-    letter-spacing: 0.3px;
-}
-.result-option input:checked + .result-option-inner.pass {
-    border-color: #27ae60;
-    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
-    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.2);
-    transform: translateY(-2px);
-}
-.result-option input:checked + .result-option-inner.pass i,
-.result-option input:checked + .result-option-inner.pass span { color: #27ae60; }
-
-.result-option input:checked + .result-option-inner.fail {
-    border-color: #e74c3c;
-    background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
-    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.2);
-    transform: translateY(-2px);
-}
-.result-option input:checked + .result-option-inner.fail i,
-.result-option input:checked + .result-option-inner.fail span { color: #e74c3c; }
-
-.result-option input:checked + .result-option-inner.pending {
-    border-color: #f39c12;
-    background: linear-gradient(135deg, #fffbeb 0%, #fefce8 100%);
-    box-shadow: 0 6px 20px rgba(243, 156, 18, 0.2);
-    transform: translateY(-2px);
-}
-.result-option input:checked + .result-option-inner.pending i,
-.result-option input:checked + .result-option-inner.pending span { color: #f39c12; }
-
-.result-option-inner:hover { border-color: #0e4c92; }
-
-/* Auto-update toggle */
-.auto-update-block {
-    background: linear-gradient(135deg, #f0f7ff 0%, #f8fafd 100%);
-    border: 2px solid #dbeafe;
-    border-radius: 14px;
-    padding: 14px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 18px;
-    transition: all 0.3s;
-}
-.auto-update-block:hover { border-color: #0e4c92; }
-.auto-update-block input[type="checkbox"] {
-    width: 20px; height: 20px;
-    accent-color: #0e4c92;
-    cursor: pointer;
-    flex-shrink: 0;
-}
-.auto-update-block label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #1e293b;
-    cursor: pointer;
-    display: flex; align-items: center; gap: 8px;
-    margin: 0;
-}
-.auto-update-block label i { color: #0e4c92; }
-
-/* Previous evaluation notice */
-.prev-eval {
-    background: #f8fafd;
-    border-radius: 12px;
-    padding: 11px 14px;
-    margin-bottom: 18px;
-    font-size: 12.5px;
-    color: #64748b;
-    display: flex; align-items: center; gap: 8px;
-    border: 1px dashed #e2e8f0;
-}
-.prev-eval i { color: #0e4c92; }
-
-/* Modal footer */
-.modal-footer {
-    background: #f8fafd;
-    padding: 18px 28px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    flex-wrap: wrap;
-    border-top: 1px solid #eef2f6;
-    margin: 20px -28px 0;
-}
-.modal-footer .btn-secondary,
-.modal-footer .btn-primary { padding: 11px 22px; font-size: 13.5px; }
+.img-error-fallback-medium, .modal-img-error-fallback { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0e4c92 0%, #4086e4 100%); color: white; font-weight: 600; }
+.img-error-fallback-medium { width: 45px; height: 45px; border-radius: 12px; font-size: 16px; }
+.modal-img-error-fallback { width: 70px; height: 70px; border-radius: 15px; font-size: 24px; box-shadow: 0 5px 15px rgba(14, 76, 146, 0.3); }
 
 @media (max-width: 768px) {
     .filter-grid { grid-template-columns: 1fr; }
-    .applicant-hero { flex-direction: column; text-align: center; }
-    .req-grid { grid-template-columns: 1fr; }
-    .result-options { grid-template-columns: 1fr; }
+    .modal-applicant-info { flex-direction: column; text-align: center; }
+    .form-row { grid-template-columns: 1fr; }
+    .requirements-grid { grid-template-columns: 1fr; }
     .modal-footer { flex-direction: column; }
-    .modal-footer a, .modal-footer button { width: 100%; justify-content: center; }
-    .modal-header h3 { font-size: 16px; }
+    .modal-footer form, .modal-footer a, .modal-footer button { width: 100%; justify-content: center; }
 }
 </style>
 
@@ -889,9 +471,10 @@ function handleImageError(img) {
     if (img.getAttribute('data-error-handled') === 'true') return;
     img.setAttribute('data-error-handled', 'true');
     const initials = img.getAttribute('data-initials') || '?';
+    const isModal = img.classList.contains('modal-applicant-photo');
     const parent = img.parentNode;
     const fallback = document.createElement('div');
-    fallback.className = 'applicant-avatar';
+    fallback.className = isModal ? 'modal-img-error-fallback' : 'img-error-fallback-medium';
     fallback.textContent = initials;
     parent.replaceChild(fallback, img);
 }
@@ -914,6 +497,7 @@ function handleImageError(img) {
 <?php if (isset($success_message)): ?>
 <div class="alert-success"><i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success_message); ?></div>
 <?php endif; ?>
+
 <?php if (isset($error_message)): ?>
 <div class="alert-danger"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error_message); ?></div>
 <?php endif; ?>
@@ -1123,7 +707,7 @@ function handleImageError(img) {
 </div>
 
 <!-- ============================================================
-     REDESIGNED EVALUATION MODAL
+     REDESIGNED EVALUATION MODAL (layout only)
      ============================================================ -->
 <?php if ($selected_applicant): 
     $needsAssess = requiresAssessment($selected_applicant['department'] ?? '', $selected_applicant['job_title'] ?? '');
@@ -1137,244 +721,171 @@ function handleImageError(img) {
 ?>
 <div id="evaluationModal" class="modal active">
     <div class="modal-content">
-        <!-- Gradient header -->
         <div class="modal-header">
-            <h3><i class="fas fa-clipboard-check"></i> Screening Evaluation</h3>
+            <h3><i class="fas fa-clipboard-check" style="color: #0e4c92;"></i> Screening Evaluation</h3>
             <a href="<?php echo $closeUrl; ?>" class="modal-close">&times;</a>
         </div>
 
-        <div class="modal-body">
-            <!-- Applicant hero card -->
+        <div class="assessment-notice <?php echo $needsAssess ? '' : 'no-assess'; ?>">
+            <?php if ($needsAssess): ?>
+                <strong><i class="fas fa-file-alt"></i> Assessment Required for this Role</strong>
+                If passed, the applicant will be sent an email to take the <strong><?php echo htmlspecialchars($assessmentType); ?></strong> before the initial interview.
+            <?php else: ?>
+                <strong><i class="fas fa-user-tie"></i> No Assessment Required</strong>
+                If passed, the applicant will proceed directly to the initial interview.
+            <?php endif; ?>
+        </div>
+
+        <!-- Applicant Hero (PICTURE INTACT) -->
+        <div class="modal-applicant-info">
             <?php 
             $photoPath = getApplicantPhoto($selected_applicant);
             $firstName = $selected_applicant['first_name'] ?? '';
             $lastName = $selected_applicant['last_name'] ?? '';
             $fullName = trim($firstName . ' ' . $lastName) ?: 'Unnamed Applicant';
             $initials = strtoupper(substr($firstName, 0, 1) . substr($lastName, 0, 1)) ?: '?';
-            ?>
-            <div class="applicant-hero">
-                <?php if ($photoPath): ?>
-                    <img src="<?php echo $photoPath; ?>" alt="<?php echo htmlspecialchars($fullName); ?>" class="applicant-avatar" onerror="handleImageError(this)" data-initials="<?php echo $initials; ?>" loading="lazy">
-                <?php else: ?>
-                    <div class="applicant-avatar"><?php echo $initials; ?></div>
+            if ($photoPath): ?>
+                <img src="<?php echo $photoPath; ?>" alt="<?php echo htmlspecialchars($fullName); ?>" class="modal-applicant-photo" onerror="handleImageError(this)" data-initials="<?php echo $initials; ?>" loading="lazy">
+            <?php else: ?>
+                <div class="modal-photo-fallback"><?php echo $initials; ?></div>
+            <?php endif; ?>
+            <div class="modal-details">
+                <h4><?php echo htmlspecialchars($fullName); ?></h4>
+                <p><i class="fas fa-briefcase"></i> <?php echo htmlspecialchars($selected_applicant['job_title'] ?? $selected_applicant['position_applied'] ?? 'General Application'); ?></p>
+                <p><i class="fas fa-envelope"></i> <?php echo htmlspecialchars($selected_applicant['email']); ?></p>
+                <p><i class="fas fa-phone"></i> <?php echo htmlspecialchars($selected_applicant['phone'] ?? 'N/A'); ?></p>
+                <p><i class="fas fa-hashtag"></i> Application #: <?php echo $selected_applicant['application_number']; ?></p>
+            </div>
+        </div>
+
+        <?php if (!empty($selected_applicant['job_title'])): ?>
+        <div class="requirements-box">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                <i class="fas fa-clipboard-list" style="color: #0e4c92;"></i>
+                <h4 style="margin: 0; font-size: 16px;">Job Requirements</h4>
+            </div>
+            <div class="requirements-grid">
+                <?php if (!empty($selected_applicant['experience_required'])): ?>
+                <div class="requirement-item"><div class="requirement-label">Experience</div><div class="requirement-value"><?php echo htmlspecialchars($selected_applicant['experience_required']); ?></div></div>
                 <?php endif; ?>
-                <div class="applicant-details">
-                    <h4><?php echo htmlspecialchars($fullName); ?></h4>
-                    <div class="applicant-meta">
-                        <span><i class="fas fa-briefcase"></i> <?php echo htmlspecialchars($selected_applicant['job_title'] ?? $selected_applicant['position_applied'] ?? 'General Application'); ?></span>
-                        <span><i class="fas fa-envelope"></i> <?php echo htmlspecialchars($selected_applicant['email']); ?></span>
-                        <span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($selected_applicant['phone'] ?? 'N/A'); ?></span>
-                        <span><i class="fas fa-hashtag"></i> <?php echo $selected_applicant['application_number']; ?></span>
+                <?php if (!empty($selected_applicant['education_required'])): ?>
+                <div class="requirement-item"><div class="requirement-label">Education</div><div class="requirement-value"><?php echo htmlspecialchars($selected_applicant['education_required']); ?></div></div>
+                <?php endif; ?>
+                <?php if (!empty($selected_applicant['license_required'])): ?>
+                <div class="requirement-item"><div class="requirement-label">License/Certification</div><div class="requirement-value"><?php echo htmlspecialchars($selected_applicant['license_required']); ?></div></div>
+                <?php endif; ?>
+                <?php if (!empty($selected_applicant['skills'])): ?>
+                <div class="requirement-item"><div class="requirement-label">Applicant Skills</div><div class="requirement-value"><?php echo nl2br(htmlspecialchars($selected_applicant['skills'])); ?></div></div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <form method="POST" class="evaluation-form">
+            <input type="hidden" name="applicant_id" value="<?php echo $selected_applicant['id']; ?>">
+
+            <!-- SCORE ROW: dual input (typeable number + slider) -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-star" style="color: #0e4c92;"></i> Screening Score (0-100)</label>
+                    <div class="score-input-group">
+                        <input type="range" id="screening_score_range" min="0" max="100" 
+                               value="<?php echo $curScore; ?>" 
+                               oninput="syncScore(this.value)">
+                        <input type="number" id="screening_score" name="screening_score" 
+                               min="0" max="100" value="<?php echo $curScore; ?>" 
+                               style="width: 75px; padding: 8px 10px; text-align: center; font-weight: 700; color: #0e4c92; border: 2px solid #e2e8f0; border-radius: 10px;"
+                               oninput="syncScoreFromNum(this.value)">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-chart-line" style="color: #0e4c92;"></i> Qualification Match %</label>
+                    <div class="score-input-group">
+                        <input type="range" id="qualification_match_range" min="0" max="100" 
+                               value="<?php echo $curMatch; ?>" 
+                               oninput="syncMatch(this.value)">
+                        <input type="number" id="qualification_match" name="qualification_match" 
+                               min="0" max="100" value="<?php echo $curMatch; ?>" 
+                               style="width: 75px; padding: 8px 10px; text-align: center; font-weight: 700; color: #0e4c92; border: 2px solid #e2e8f0; border-radius: 10px;"
+                               oninput="syncMatchFromNum(this.value)">
                     </div>
                 </div>
             </div>
 
-            <!-- Assessment banner -->
-            <div class="assessment-banner <?php echo $needsAssess ? 'required' : 'not-required'; ?>">
-                <div class="assessment-banner-icon">
-                    <i class="fas <?php echo $needsAssess ? 'fa-file-alt' : 'fa-user-tie'; ?>"></i>
+            <div class="match-indicator">
+                <i class="fas fa-user-check" style="color: #0e4c92;"></i>
+                <span>Qualification Match:</span>
+                <div class="match-bar"><div class="match-progress" id="match_bar" style="width: <?php echo $curMatch; ?>%"></div></div>
+                <span class="score-value" id="match_percent"><?php echo $curMatch; ?>%</span>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-notes-medical" style="color: #0e4c92;"></i> Screening Notes</label>
+                <textarea name="screening_notes" placeholder="Enter your evaluation notes..."><?php echo htmlspecialchars($existing_evaluation['screening_notes'] ?? ''); ?></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-tasks" style="color: #0e4c92;"></i> Screening Result</label>
+                    <select name="screening_result" required>
+                        <option value="pass" <?php echo $curResult == 'pass' ? 'selected' : ''; ?>>Pass - Qualified</option>
+                        <option value="fail" <?php echo $curResult == 'fail' ? 'selected' : ''; ?>>Fail - Not Qualified</option>
+                        <option value="pending" <?php echo $curResult == 'pending' ? 'selected' : ''; ?>>Pending - Need More Review</option>
+                    </select>
                 </div>
-                <div>
-                    <?php if ($needsAssess): ?>
-                        <strong>Assessment Required for this Role</strong>
-                        If passed, the applicant will be sent an email to take the <strong><?php echo htmlspecialchars($assessmentType); ?></strong> before the initial interview.
-                    <?php else: ?>
-                        <strong>No Assessment Required</strong>
-                        If passed, the applicant will proceed directly to the initial interview.
-                    <?php endif; ?>
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-check" style="color: #0e4c92;"></i> Evaluation Date</label>
+                    <input type="text" value="<?php echo date('F d, Y H:i'); ?>" readonly disabled style="background: #f8fafd;">
                 </div>
             </div>
 
-            <!-- Job Requirements -->
-            <?php if (!empty($selected_applicant['job_title'])): ?>
-            <div class="req-section">
-                <div class="req-section-title"><i class="fas fa-clipboard-list"></i> Job Requirements</div>
-                <div class="req-grid">
-                    <?php if (!empty($selected_applicant['experience_required'])): ?>
-                    <div class="req-card"><div class="req-card-label">Experience</div><div class="req-card-value"><?php echo htmlspecialchars($selected_applicant['experience_required']); ?></div></div>
-                    <?php endif; ?>
-                    <?php if (!empty($selected_applicant['education_required'])): ?>
-                    <div class="req-card"><div class="req-card-label">Education</div><div class="req-card-value"><?php echo htmlspecialchars($selected_applicant['education_required']); ?></div></div>
-                    <?php endif; ?>
-                    <?php if (!empty($selected_applicant['license_required'])): ?>
-                    <div class="req-card"><div class="req-card-label">License</div><div class="req-card-value"><?php echo htmlspecialchars($selected_applicant['license_required']); ?></div></div>
-                    <?php endif; ?>
-                    <?php if (!empty($selected_applicant['skills'])): ?>
-                    <div class="req-card"><div class="req-card-label">Applicant Skills</div><div class="req-card-value"><?php echo nl2br(htmlspecialchars($selected_applicant['skills'])); ?></div></div>
-                    <?php endif; ?>
-                </div>
+            <div class="checkbox-group">
+                <input type="checkbox" name="update_status" id="update_status" checked>
+                <label for="update_status" style="font-weight: 500;">
+                    <i class="fas fa-sync-alt" style="color: #0e4c92;"></i> Update applicant status automatically
+                </label>
+            </div>
+
+            <?php if ($existing_evaluation): ?>
+            <div style="background: #f8fafd; border-radius: 10px; padding: 10px; margin: 15px 0; font-size: 13px; color: #64748b;">
+                <i class="fas fa-history"></i> Previously evaluated by <?php echo htmlspecialchars($existing_evaluation['evaluator_name'] ?? 'Unknown'); ?> on <?php echo date('F d, Y H:i', strtotime($existing_evaluation['evaluation_date'])); ?>
             </div>
             <?php endif; ?>
 
-            <!-- FORM -->
-            <form method="POST" id="evalForm">
-                <input type="hidden" name="applicant_id" value="<?php echo $selected_applicant['id']; ?>">
-
-                <!-- SCORE BLOCK -->
-                <div class="score-block">
-                    <div class="score-block-header">
-                        <div class="score-block-title"><i class="fas fa-star"></i> Screening Score</div>
-                        <div class="score-number-wrap">
-                            <input type="number" class="score-number" id="screening_score_num" name="screening_score" 
-                                   min="0" max="100" value="<?php echo $curScore; ?>" 
-                                   oninput="syncScoreFromNumber()">
-                            <span class="score-suffix">/100</span>
-                        </div>
-                    </div>
-                    <input type="range" class="score-slider" id="screening_score_range" 
-                           min="0" max="100" value="<?php echo $curScore; ?>" 
-                           style="--slider-fill: <?php echo $curScore; ?>%"
-                           oninput="syncScoreFromSlider()">
-                    <div class="score-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-                    <div class="score-hint"><i class="fas fa-info-circle"></i> Drag the slider or type a number directly.</div>
-                </div>
-
-                <!-- MATCH BLOCK -->
-                <div class="score-block">
-                    <div class="score-block-header">
-                        <div class="score-block-title"><i class="fas fa-chart-line"></i> Qualification Match</div>
-                        <div class="score-number-wrap">
-                            <input type="number" class="score-number" id="qualification_match_num" name="qualification_match" 
-                                   min="0" max="100" value="<?php echo $curMatch; ?>" 
-                                   oninput="syncMatchFromNumber()">
-                            <span class="score-suffix">%</span>
-                        </div>
-                    </div>
-                    <input type="range" class="score-slider" id="qualification_match_range" 
-                           min="0" max="100" value="<?php echo $curMatch; ?>" 
-                           style="--slider-fill: <?php echo $curMatch; ?>%"
-                           oninput="syncMatchFromSlider()">
-                    <div class="score-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-                    <div class="match-progress-container">
-                        <div class="match-progress-fill" id="matchBar" style="width: <?php echo $curMatch; ?>%"></div>
-                    </div>
-                </div>
-
-                <!-- NOTES -->
-                <div class="notes-block">
-                    <label><i class="fas fa-notes-medical"></i> Screening Notes</label>
-                    <textarea name="screening_notes" placeholder="Enter your evaluation notes, observations, or remarks about this applicant..."><?php echo htmlspecialchars($existing_evaluation['screening_notes'] ?? ''); ?></textarea>
-                </div>
-
-                <!-- RESULT -->
-                <div class="result-block">
-                    <div class="result-label"><i class="fas fa-tasks"></i> Screening Result</div>
-                    <div class="result-options">
-                        <label class="result-option">
-                            <input type="radio" name="screening_result" value="pass" <?php echo $curResult == 'pass' ? 'checked' : ''; ?> required>
-                            <div class="result-option-inner pass">
-                                <i class="fas fa-check-circle"></i>
-                                <span>Pass</span>
-                            </div>
-                        </label>
-                        <label class="result-option">
-                            <input type="radio" name="screening_result" value="pending" <?php echo $curResult == 'pending' ? 'checked' : ''; ?>>
-                            <div class="result-option-inner pending">
-                                <i class="fas fa-clock"></i>
-                                <span>Pending</span>
-                            </div>
-                        </label>
-                        <label class="result-option">
-                            <input type="radio" name="screening_result" value="fail" <?php echo $curResult == 'fail' ? 'checked' : ''; ?>>
-                            <div class="result-option-inner fail">
-                                <i class="fas fa-times-circle"></i>
-                                <span>Fail</span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- AUTO UPDATE -->
-                <div class="auto-update-block">
-                    <input type="checkbox" name="update_status" id="update_status" checked>
-                    <label for="update_status">
-                        <i class="fas fa-sync-alt"></i> Update applicant status automatically
-                    </label>
-                </div>
-
-                <?php if ($existing_evaluation): ?>
-                <div class="prev-eval">
-                    <i class="fas fa-history"></i>
-                    Previously evaluated by <strong><?php echo htmlspecialchars($existing_evaluation['evaluator_name'] ?? 'Unknown'); ?></strong>
-                    on <?php echo date('F d, Y H:i', strtotime($existing_evaluation['evaluation_date'])); ?>
-                </div>
-                <?php endif; ?>
-
-                <!-- FOOTER -->
-                <div class="modal-footer">
-                    <a href="<?php echo $closeUrl; ?>" class="btn-secondary"><i class="fas fa-times"></i> Cancel</a>
-                    <a href="?page=applicant&subpage=applicant-profiles&id=<?php echo $selected_applicant['id']; ?>" class="btn-secondary"><i class="fas fa-user"></i> View Profile</a>
-                    <button type="submit" name="save_evaluation" class="btn-primary"><i class="fas fa-save"></i> Save Evaluation</button>
-                </div>
-            </form>
-        </div>
+            <div class="modal-footer">
+                <a href="<?php echo $closeUrl; ?>" class="btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+                <button type="submit" name="save_evaluation" class="btn-primary"><i class="fas fa-save"></i> Save Evaluation</button>
+                <a href="?page=applicant&subpage=applicant-profiles&id=<?php echo $selected_applicant['id']; ?>" class="btn-secondary"><i class="fas fa-user"></i> View Full Profile</a>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
-/* ============================
-   SCORE SYNC (dual input)
-   ============================ */
-const scoreNum   = document.getElementById('screening_score_num');
-const scoreRange = document.getElementById('screening_score_range');
-const matchNum   = document.getElementById('qualification_match_num');
-const matchRange = document.getElementById('qualification_match_range');
-const matchBar   = document.getElementById('matchBar');
-
-function clamp(v) {
-    v = parseInt(v);
-    if (isNaN(v)) v = 0;
-    return Math.max(0, Math.min(100, v));
+/* Score ↔ Slider sync */
+function syncScore(val) {
+    document.getElementById('screening_score').value = val;
 }
-
-/* SCREENING SCORE */
-function syncScoreFromSlider() {
-    const v = clamp(scoreRange.value);
-    scoreNum.value = v;
-    scoreRange.style.setProperty('--slider-fill', v + '%');
+function syncScoreFromNum(val) {
+    val = Math.max(0, Math.min(100, parseInt(val) || 0));
+    document.getElementById('screening_score_range').value = val;
 }
-function syncScoreFromNumber() {
-    const v = clamp(scoreNum.value);
-    scoreRange.value = v;
-    scoreRange.style.setProperty('--slider-fill', v + '%');
+function syncMatch(val) {
+    document.getElementById('qualification_match').value = val;
+    document.getElementById('match_bar').style.width = val + '%';
+    document.getElementById('match_percent').textContent = val + '%';
 }
-scoreRange.addEventListener('input', syncScoreFromSlider);
-scoreNum.addEventListener('input', syncScoreFromNumber);
-scoreNum.addEventListener('blur', function() {
-    this.value = clamp(this.value);  // normalize on blur
-    syncScoreFromNumber();
-});
-
-/* QUALIFICATION MATCH */
-function syncMatchFromSlider() {
-    const v = clamp(matchRange.value);
-    matchNum.value = v;
-    matchRange.style.setProperty('--slider-fill', v + '%');
-    matchBar.style.width = v + '%';
+function syncMatchFromNum(val) {
+    val = Math.max(0, Math.min(100, parseInt(val) || 0));
+    document.getElementById('qualification_match_range').value = val;
+    document.getElementById('match_bar').style.width = val + '%';
+    document.getElementById('match_percent').textContent = val + '%';
 }
-function syncMatchFromNumber() {
-    const v = clamp(matchNum.value);
-    matchRange.value = v;
-    matchRange.style.setProperty('--slider-fill', v + '%');
-    matchBar.style.width = v + '%';
-}
-matchRange.addEventListener('input', syncMatchFromSlider);
-matchNum.addEventListener('input', syncMatchFromNumber);
-matchNum.addEventListener('blur', function() {
-    this.value = clamp(this.value);
-    syncMatchFromNumber();
-});
-
-/* Init fills on load */
-syncScoreFromNumber();
-syncMatchFromNumber();
-
-/* Close modal when clicking outside */
-window.addEventListener('click', function(e) {
+window.onclick = function(event) {
     const modal = document.getElementById('evaluationModal');
-    if (e.target === modal) {
+    if (event.target == modal) {
         window.location.href = '<?php echo $closeUrl; ?>';
     }
-});
+}
 </script>
 <?php endif; ?>

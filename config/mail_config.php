@@ -34,8 +34,8 @@ class MailConfig {
         
         // !!! IMPORTANT: Replace with your actual Gmail credentials !!!
         // Use App Password, not your regular Gmail password
-        $this->mail->Username   = 'stephenviray12@gmail.com';  // Your Gmail
-        $this->mail->Password   = 'tidq iceg gsbs oucb';       // Your Gmail App Password
+        $this->mail->Username   = 'humanresourcesmanagement88@gmail.com';  // Your Gmail
+        $this->mail->Password   = 'dkzh vikl gafx tgmh';       // Your Gmail App Password
         
         $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $this->mail->Port       = 587;
