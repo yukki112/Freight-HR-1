@@ -82,6 +82,62 @@ $unread_notifications = getUnreadNotificationCount($pdo, $_SESSION['user_id'] ??
                         }
                     }
                 }
+                // ============================================================
+                // EMPLOYEE RECORDS MANAGEMENT (ERM) — explicit routing
+                // ============================================================
+                elseif ($current_page === 'erm') {
+                    $erm_files = [
+                        'erm-dashboard'    => 'modules/erm/erm-dashboard.php',
+                        'erm-personnel'    => 'modules/erm/erm-personnel.php',
+                        'erm-upload'       => 'modules/erm/erm-upload.php',
+                        'erm-verification' => 'modules/erm/erm-verification.php',
+                        'erm-expiration'   => 'modules/erm/erm-expiration.php',
+                        'erm-archives'     => 'modules/erm/erm-archives.php',
+                        'erm-audit'        => 'modules/erm/erm-audit.php',
+                    ];
+
+                    $erm_sub = $current_subpage ?: 'erm-dashboard';
+                    if (isset($erm_files[$erm_sub]) && file_exists($erm_files[$erm_sub])) {
+                        include $erm_files[$erm_sub];
+                    } else {
+                        // Fallback
+                        if (file_exists('modules/erm/erm-dashboard.php')) {
+                            include 'modules/erm/erm-dashboard.php';
+                        } else {
+                            echo '<div style="padding:40px;text-align:center;color:#64748b;">';
+                            echo '<h2>Employee Records module is being set up.</h2>';
+                            echo '<p>Please create the module files under <code>modules/erm/</code>.</p>';
+                            echo '</div>';
+                        }
+                    }
+                }
+                // ============================================================
+                // ESS ADMIN — explicit routing (5 submodules)
+                // ============================================================
+                elseif ($current_page === 'ess-admin') {
+                    $ess_files = [
+                        'ess-accounts'      => 'modules/admin-ess/ess-accounts.php',
+                        'ess-announcements' => 'modules/admin-ess/ess-announcements.php',
+                        'ess-requests'      => 'modules/admin-ess/ess-requests.php',
+                        'ess-documents'     => 'modules/admin-ess/ess-documents.php',
+                        'ess-settings'      => 'modules/admin-ess/ess-settings.php',
+                    ];
+
+                    $ess_sub = $current_subpage ?: 'ess-accounts';
+                    if (isset($ess_files[$ess_sub]) && file_exists($ess_files[$ess_sub])) {
+                        include $ess_files[$ess_sub];
+                    } else {
+                        // Fallback
+                        if (file_exists('modules/admin-ess/ess-accounts.php')) {
+                            include 'modules/admin-ess/ess-accounts.php';
+                        } else {
+                            echo '<div style="padding:40px;text-align:center;color:#64748b;">';
+                            echo '<h2>ESS Admin module is being set up.</h2>';
+                            echo '<p>Please create the module files under <code>modules/admin-ess/</code>.</p>';
+                            echo '</div>';
+                        }
+                    }
+                }
                 // Generic routing
                 elseif ($current_subpage) {
                     $subpage_file = "modules/{$current_page}/{$current_subpage}.php";

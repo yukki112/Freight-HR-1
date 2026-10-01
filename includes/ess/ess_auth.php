@@ -2,6 +2,9 @@
 // /includes/ess/ess_auth.php
 require_once __DIR__ . '/ess_config.php';
 
+// Load PHPMailer config (your existing one)
+require_once __DIR__ . '/../../config/mail_config.php';
+
 /**
  * Check if ESS user is logged in
  */
@@ -39,17 +42,28 @@ function essRequireLogin() {
 }
 
 /**
- * Get ESS account
+ * Get ESS account (with employee info joined)
+ * NOTE: first_name / last_name come from job_applications via applicant_id
  */
 function essGetAccount($pdo, $accountId = null) {
     $accountId = $accountId ?? ($_SESSION['ess_account_id'] ?? 0);
     if (!$accountId) return null;
+
     $stmt = $pdo->prepare("
-        SELECT ea.*, nh.employee_id as emp_code, nh.position, nh.department,
-               nh.personal_email, nh.personal_phone, nh.status as employee_status,
-               nh.first_name, nh.last_name, nh.hire_date
+        SELECT ea.*,
+               nh.employee_id       AS emp_code,
+               nh.position,
+               nh.department,
+               nh.personal_email,
+               nh.personal_phone,
+               nh.status            AS employee_status,
+               nh.hire_date,
+               ja.first_name,
+               ja.last_name,
+               ja.email             AS applicant_email
         FROM ess_accounts ea
-        JOIN new_hires nh ON ea.employee_id = nh.id
+        JOIN new_hires nh         ON ea.employee_id = nh.id
+        JOIN job_applications ja  ON nh.applicant_id = ja.id
         WHERE ea.id = ?
     ");
     $stmt->execute([$accountId]);
@@ -62,10 +76,15 @@ function essGetAccount($pdo, $accountId = null) {
 function essGetEmployee($pdo, $employeeId = null) {
     $employeeId = $employeeId ?? ($_SESSION['ess_employee_id'] ?? 0);
     if (!$employeeId) return null;
+
     $stmt = $pdo->prepare("
         SELECT nh.*,
-               CONCAT(nh.first_name, ' ', COALESCE(nh.middle_name, ''), ' ', nh.last_name) as full_name
+               ja.first_name,
+               ja.last_name,
+               ja.email AS applicant_email,
+               CONCAT(ja.first_name, ' ', ja.last_name) AS full_name
         FROM new_hires nh
+        JOIN job_applications ja ON nh.applicant_id = ja.id
         WHERE nh.id = ?
     ");
     $stmt->execute([$employeeId]);
@@ -117,17 +136,17 @@ function essLogin($pdo, $usernameOrEmail, $password) {
     $stmt->execute([$account['id']]);
 
     // Set session
-    $_SESSION['ess_account_id'] = $account['id'];
-    $_SESSION['ess_employee_id'] = $account['employee_id'];
-    $_SESSION['ess_username'] = $account['username'];
-    $_SESSION['ess_email'] = $account['email'];
+    $_SESSION['ess_account_id']           = $account['id'];
+    $_SESSION['ess_employee_id']          = $account['employee_id'];
+    $_SESSION['ess_username']             = $account['username'];
+    $_SESSION['ess_email']                = $account['email'];
     $_SESSION['ess_must_change_password'] = (int)$account['must_change_password'];
-    $_SESSION['ess_last_activity'] = time();
+    $_SESSION['ess_last_activity']        = time();
 
     essLogActivity($pdo, $account['id'], $account['employee_id'], 'login', 'Employee logged in');
 
     return [
-        'success' => true,
+        'success'              => true,
         'must_change_password' => (bool)$account['must_change_password']
     ];
 }
@@ -139,7 +158,13 @@ function essLogout() {
     if (isset($_SESSION['ess_account_id'])) {
         global $pdo;
         if (isset($pdo)) {
-            essLogActivity($pdo, $_SESSION['ess_account_id'], $_SESSION['ess_employee_id'] ?? null, 'logout', 'Employee logged out');
+            essLogActivity(
+                $pdo,
+                $_SESSION['ess_account_id'],
+                $_SESSION['ess_employee_id'] ?? null,
+                'logout',
+                'Employee logged out'
+            );
         }
     }
     unset(
@@ -158,18 +183,16 @@ function essLogout() {
 function essChangePassword($pdo, $accountId, $newPassword) {
     $hash = password_hash($newPassword, PASSWORD_DEFAULT);
 
-    // Save to history
     $stmt = $pdo->prepare("INSERT INTO ess_password_history (account_id, password_hash) VALUES (?, ?)");
     $stmt->execute([$accountId, $hash]);
 
-    // Update account
     $stmt = $pdo->prepare("
         UPDATE ess_accounts
-        SET password_hash = ?,
-            temp_password_hash = NULL,
+        SET password_hash            = ?,
+            temp_password_hash       = NULL,
             temp_password_expires_at = NULL,
-            must_change_password = 0,
-            password_changed_at = NOW()
+            must_change_password     = 0,
+            password_changed_at      = NOW()
         WHERE id = ?
     ");
     $stmt->execute([$hash, $accountId]);
@@ -202,6 +225,7 @@ function essCreateAccount($pdo, $employeeId, $email, $createdBy = null) {
     }
 
     $username = strtolower(preg_replace('/[^a-z0-9]/i', '', explode('@', $email)[0]));
+    if (empty($username)) $username = 'emp' . $employeeId;
     $base = $username;
     $i = 1;
     while (true) {
@@ -212,8 +236,8 @@ function essCreateAccount($pdo, $employeeId, $email, $createdBy = null) {
     }
 
     $tempPassword = essGenerateTempPassword();
-    $tempHash = password_hash($tempPassword, PASSWORD_DEFAULT);
-    $expiresAt = date('Y-m-d H:i:s', strtotime('+' . ESS_TEMP_PASSWORD_EXPIRY_DAYS . ' days'));
+    $tempHash     = password_hash($tempPassword, PASSWORD_DEFAULT);
+    $expiresAt    = date('Y-m-d H:i:s', strtotime('+' . ESS_TEMP_PASSWORD_EXPIRY_DAYS . ' days'));
 
     $stmt = $pdo->prepare("
         INSERT INTO ess_accounts
@@ -223,36 +247,40 @@ function essCreateAccount($pdo, $employeeId, $email, $createdBy = null) {
     $stmt->execute([$employeeId, $username, $email, $tempHash, $tempHash, $expiresAt, $createdBy]);
 
     return [
-        'success' => true,
-        'account_id' => (int)$pdo->lastInsertId(),
-        'username' => $username,
+        'success'       => true,
+        'account_id'    => (int)$pdo->lastInsertId(),
+        'username'      => $username,
         'temp_password' => $tempPassword,
-        'expires_at' => $expiresAt,
-        'email' => $email
+        'expires_at'    => $expiresAt,
+        'email'         => $email
     ];
 }
 
 /**
- * Reset password (admin)
+ * Reset password (admin action)
  */
 function essResetPassword($pdo, $accountId) {
     $tempPassword = essGenerateTempPassword();
-    $tempHash = password_hash($tempPassword, PASSWORD_DEFAULT);
-    $expiresAt = date('Y-m-d H:i:s', strtotime('+' . ESS_TEMP_PASSWORD_EXPIRY_DAYS . ' days'));
+    $tempHash     = password_hash($tempPassword, PASSWORD_DEFAULT);
+    $expiresAt    = date('Y-m-d H:i:s', strtotime('+' . ESS_TEMP_PASSWORD_EXPIRY_DAYS . ' days'));
 
     $stmt = $pdo->prepare("
         UPDATE ess_accounts
-        SET password_hash = ?,
-            temp_password_hash = ?,
+        SET password_hash            = ?,
+            temp_password_hash       = ?,
             temp_password_expires_at = ?,
-            must_change_password = 1,
-            login_attempts = 0,
-            locked_until = NULL
+            must_change_password     = 1,
+            login_attempts           = 0,
+            locked_until             = NULL
         WHERE id = ?
     ");
     $stmt->execute([$tempHash, $tempHash, $expiresAt, $accountId]);
 
-    return ['success' => true, 'temp_password' => $tempPassword, 'expires_at' => $expiresAt];
+    return [
+        'success'       => true,
+        'temp_password' => $tempPassword,
+        'expires_at'    => $expiresAt
+    ];
 }
 
 /**
@@ -265,24 +293,37 @@ function essLogActivity($pdo, $accountId, $employeeId, $action, $description = '
             VALUES (?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
-            $accountId, $employeeId, $action, $description,
+            $accountId,
+            $employeeId,
+            $action,
+            $description,
             $_SERVER['REMOTE_ADDR'] ?? null,
             $_SERVER['HTTP_USER_AGENT'] ?? null
         ]);
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+        // Silent fail — logging should never break the app
+    }
 }
 
 /**
- * Notifications
+ * Get ESS notifications
  */
 function essGetNotifications($pdo, $employeeId, $limit = 10) {
-    $stmt = $pdo->prepare("SELECT * FROM ess_notifications WHERE employee_id = ? ORDER BY created_at DESC LIMIT ?");
+    $stmt = $pdo->prepare("
+        SELECT * FROM ess_notifications
+        WHERE employee_id = ?
+        ORDER BY created_at DESC
+        LIMIT ?
+    ");
     $stmt->bindValue(1, $employeeId, PDO::PARAM_INT);
     $stmt->bindValue(2, $limit, PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll();
 }
 
+/**
+ * Get unread notification count
+ */
 function essGetUnreadCount($pdo, $employeeId) {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM ess_notifications WHERE employee_id = ? AND is_read = 0");
     $stmt->execute([$employeeId]);
@@ -290,48 +331,116 @@ function essGetUnreadCount($pdo, $employeeId) {
 }
 
 /**
- * Send credentials email (uses mail() — replace with PHPMailer if you have it)
+ * Send ESS credentials email — USES PHPMailer via your MailConfig class
+ *
+ * @return bool  true if sent, false on failure
  */
 function essSendCredentialsEmail($toEmail, $employeeName, $username, $tempPassword, $expiresAt) {
-    $subject = "Your Employee Self-Service (ESS) Account | Freight HR 1";
-    $loginUrl = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/' . ESS_LOGIN_URL;
-    $expiresFmt = date('F j, Y g:i A', strtotime($expiresAt));
+    try {
+        // Get the shared PHPMailer instance
+        $mail = MailConfig::getInstance();
 
-    $body = "
-    <html><body style='font-family: Arial, sans-serif; background:#f5f7fa; padding:20px;'>
-        <div style='max-width:600px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.08);'>
-            <div style='background:linear-gradient(135deg,#0e4c92,#4086e4); color:white; padding:35px; text-align:center;'>
-                <h1 style='margin:0; font-size:24px;'>Employee Self-Service Access</h1>
-                <p style='margin:8px 0 0; opacity:0.9;'>Freight Management HR 1</p>
-            </div>
-            <div style='padding:35px; color:#333; line-height:1.7;'>
-                <p>Hi <strong>" . htmlspecialchars($employeeName) . "</strong>,</p>
-                <p>Your Employee Self-Service (ESS) account has been created. Use the credentials below to log in.</p>
+        // Clear any previous recipients/attachments from shared instance
+        $mail->clearAddresses();
+        $mail->clearAttachments();
+        $mail->clearCustomHeaders();
+        $mail->clearBCCs();
+        $mail->clearCCs();
 
-                <div style='background:#f0f7ff; border-left:4px solid #0e4c92; padding:20px; border-radius:8px; margin:20px 0;'>
-                    <p style='margin:0 0 10px;'><strong>Login URL:</strong><br><a href='{$loginUrl}' style='color:#0e4c92;'>{$loginUrl}</a></p>
-                    <p style='margin:0 0 10px;'><strong>Username:</strong> <code style='background:#e0edff; padding:3px 8px; border-radius:6px;'>{$username}</code></p>
-                    <p style='margin:0;'><strong>Temporary Password:</strong> <code style='background:#e0edff; padding:3px 8px; border-radius:6px; font-size:16px;'>{$tempPassword}</code></p>
+        // Build login URL
+        $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+        $host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $dir      = rtrim(dirname($_SERVER['PHP_SELF'] ?? '/'), '/\\');
+        // dirname on /hr1/root.php = /hr1  → ess_login.php lives at /hr1/ess_login.php
+        $loginUrl = $scheme . $host . $dir . '/ess_login.php';
+
+        $expiresFmt = date('F j, Y g:i A', strtotime($expiresAt));
+
+        // Recipients
+        $mail->addAddress($toEmail, $employeeName);
+        $mail->addBCC('hr@freightmanagement.com', 'HR Department');
+
+        // Subject
+        $mail->Subject = "Your Employee Self-Service (ESS) Account | Freight HR 1";
+
+        // Build HTML body
+        $safeName     = htmlspecialchars($employeeName, ENT_QUOTES, 'UTF-8');
+        $safeUsername = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+        $safePass     = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+        $safeUrl      = htmlspecialchars($loginUrl, ENT_QUOTES, 'UTF-8');
+
+        $html = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1.0">
+            <style>
+                body{font-family:"Inter",Arial,sans-serif;line-height:1.6;margin:0;padding:0;background:linear-gradient(135deg,#f5f7fa,#e9edf5);}
+                .container{max-width:600px;margin:20px auto;background:#fff;border-radius:30px;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);}
+                .header{background:linear-gradient(135deg,#0e4c92,#4086e4);color:#fff;padding:40px 30px;text-align:center;}
+                .header h1{margin:0;font-size:24px;font-weight:700;}
+                .header p{margin:8px 0 0;opacity:0.9;font-size:14px;}
+                .content{padding:35px 30px;color:#333;}
+                .content p{font-size:14px;color:#4a5568;}
+                .cred-box{background:#f0f7ff;border-left:4px solid #0e4c92;padding:20px;border-radius:10px;margin:20px 0;}
+                .cred-box p{margin:0 0 10px;font-size:14px;color:#2c3e50;}
+                .cred-box p:last-child{margin-bottom:0;}
+                .cred-box code{background:#e0edff;padding:3px 8px;border-radius:6px;font-family:monospace;color:#0e4c92;font-size:15px;}
+                .cred-box .pwd{font-size:17px;font-weight:700;}
+                .warn-box{background:#fff7ed;border-left:4px solid #f59e0b;padding:15px 18px;border-radius:10px;margin:20px 0;}
+                .warn-box p{margin:0;font-size:13px;color:#92400e;line-height:1.6;}
+                .footer{background:#f8fafd;padding:20px 30px;text-align:center;border-top:1px solid #eef2f6;}
+                .footer p{margin:5px 0;font-size:12px;color:#64748b;}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Employee Self-Service Access</h1>
+                    <p>Freight Management HR 1</p>
                 </div>
+                <div class="content">
+                    <p>Hi <strong>' . $safeName . '</strong>,</p>
+                    <p>Your Employee Self-Service (ESS) account has been created. Use the credentials below to log in.</p>
 
-                <div style='background:#fff7ed; border-left:4px solid #f59e0b; padding:15px; border-radius:8px; margin:20px 0;'>
-                    <p style='margin:0; font-size:14px;'><strong>⚠️ Important:</strong> This temporary password expires on <strong>{$expiresFmt}</strong>. You must change it upon first login. After expiry, request a new one from HR.</p>
+                    <div class="cred-box">
+                        <p><strong>Login URL:</strong><br>
+                            <a href="' . $safeUrl . '" style="color:#0e4c92;">' . $safeUrl . '</a>
+                        </p>
+                        <p><strong>Username:</strong> <code>' . $safeUsername . '</code></p>
+                        <p><strong>Temporary Password:</strong> <code class="pwd">' . $safePass . '</code></p>
+                    </div>
+
+                    <div class="warn-box">
+                        <p><strong>⚠️ Important:</strong> This temporary password expires on <strong>' . $expiresFmt . '</strong>. You must change it upon first login. After expiry, request a new one from HR.</p>
+                    </div>
+
+                    <p>If you did not request this account, please contact HR immediately.</p>
+                    <p style="margin-top:25px;">Best regards,<br>
+                        <strong>HR Department</strong><br>
+                        Freight Management HR 1
+                    </p>
                 </div>
-
-                <p>If you did not request this account, please contact HR immediately.</p>
-                <p style='margin-top:30px;'>Best regards,<br><strong>HR Department</strong><br>Freight Management HR 1</p>
+                <div class="footer">
+                    <p>Freight Management Inc.</p>
+                    <p>This is an automated message. Please do not reply.</p>
+                </div>
             </div>
-            <div style='background:#f5f7fa; padding:20px; text-align:center; font-size:12px; color:#64748b;'>
-                This is an automated message. Please do not reply.
-            </div>
-        </div>
-    </body></html>
-    ";
+        </body>
+        </html>';
 
-    $headers  = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
-    $headers .= "From: Freight HR 1 <noreply@freight-hr1.com>\r\n";
+        $mail->isHTML(true);
+        $mail->Body    = $html;
+        $mail->AltBody = "Hi {$employeeName},\n\nYour ESS account has been created.\n\nLogin URL: {$loginUrl}\nUsername: {$username}\nTemporary Password: {$tempPassword}\n\nThis password expires on {$expiresFmt}. You must change it upon first login.\n\n- HR Department";
 
-    return @mail($toEmail, $subject, $body, $headers);
+        $mail->send();
+        return true;
+
+    } catch (Exception $e) {
+        // Log the actual error for debugging
+        error_log("ESS email send failed: " . ($mail->ErrorInfo ?? $e->getMessage()));
+        return false;
+    }
 }
 ?>

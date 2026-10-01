@@ -37,13 +37,14 @@ function isSubpageActive($subpage, $current_subpage) {
         <div class="sidebar-header">
             <div class="logo-container">
                 <div class="logo-wrapper">
-                    <img src="assets/images/logo1.png" alt="HR 1 Freight Logo" class="logo-image" 
+                    <img src="assets/images/LOGO.jpg" alt="HR 1 Freight Logo" class="logo-image" 
                          onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=HR1&background=0e4c92&color=fff&size=100&bold=true&format=png';">
                 </div>
                 <?php if (!$collapsed): ?>
                 <div class="logo-text-wrapper">
-                    <span class="logo-bcp">SLATE</span>
-                    <span class="logo-budget">FREIGHT HR 1</span>
+                    <span class="logo-bcp">PRIORITY</span>
+                    <span class="logo-budget">HANDLING 
+LOGSTICS,INC.</span>
                 </div>
                 <?php endif; ?>
             </div>
@@ -190,37 +191,82 @@ function isSubpageActive($subpage, $current_subpage) {
                 </ul>
             </div>
 
-            <!-- EMPLOYEE SELF-SERVICE -->
+            <!-- EMPLOYEE RECORDS -->
             <div class="sidebar-section">
                 <?php if (!$collapsed): ?>
                 <div class="section-header">
-                    <i class="fas fa-user-check"></i>
-                    <span>EMPLOYEE SELF-SERVICE</span>
+                    <i class="fas fa-folder-tree"></i>
+                    <span>EMPLOYEE RECORDS</span>
                 </div>
                 <?php endif; ?>
                 <ul class="nav-menu">
-                    <li class="nav-item has-submenu <?php echo isModuleActive('ess', $current_page, $current_subpage) ? 'active' : ''; ?>" style="--item-color: #1a5da0;">
-                        <a href="javascript:void(0)" onclick="toggleSubmenu('ess-submenu')">
-                            <div class="icon-wrapper"><i class="fas fa-user-circle"></i></div>
+                    <li class="nav-item has-submenu <?php echo isModuleActive('erm', $current_page, $current_subpage) ? 'active' : ''; ?>" style="--item-color: #0e4c92;">
+                        <a href="javascript:void(0)" onclick="toggleSubmenu('erm-submenu')">
+                            <div class="icon-wrapper"><i class="fas fa-archive"></i></div>
                             <?php if (!$collapsed): ?>
-                            <span class="nav-label">Employee Self-Service</span>
+                            <span class="nav-label">Records Management</span>
                             <i class="fas fa-chevron-down submenu-arrow"></i>
                             <div class="nav-indicator"></div>
                             <?php endif; ?>
                         </a>
                     </li>
-                    <ul class="submenu <?php echo isModuleActive('ess', $current_page, $current_subpage) ? 'active' : ''; ?>" id="ess-submenu">
-                        <li class="submenu-item <?php echo isSubpageActive('ess-dashboard', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess&subpage=ess-dashboard"><i class="fas fa-tachometer-alt"></i><span>My Dashboard</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('my-profile', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess&subpage=my-profile"><i class="fas fa-id-card"></i><span>My Profile</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('my-attendance', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess&subpage=my-attendance"><i class="fas fa-clock"></i><span>My Attendance</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('my-leave', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess&subpage=my-leave"><i class="fas fa-calendar-minus"></i><span>My Leave</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('my-payslips', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess&subpage=my-payslips"><i class="fas fa-file-invoice-dollar"></i><span>My Payslips</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('my-benefits', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess&subpage=my-benefits"><i class="fas fa-heart"></i><span>My Benefits</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('my-performance', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess&subpage=my-performance"><i class="fas fa-chart-line"></i><span>My Performance</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('my-requests', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess&subpage=my-requests"><i class="fas fa-paper-plane"></i><span>My Requests</span></a></li>
+                    <ul class="submenu <?php echo isModuleActive('erm', $current_page, $current_subpage) ? 'active' : ''; ?>" id="erm-submenu">
+                        <li class="submenu-item <?php echo isSubpageActive('erm-dashboard', $current_subpage) ? 'active' : ''; ?>">
+                            <a href="?page=erm&subpage=erm-dashboard"><i class="fas fa-chart-pie"></i><span>Overview</span></a>
+                        </li>
+                        <li class="submenu-item <?php echo isSubpageActive('erm-personnel', $current_subpage) ? 'active' : ''; ?>">
+                            <a href="?page=erm&subpage=erm-personnel"><i class="fas fa-folder-open"></i><span>Personnel Files</span></a>
+                        </li>
+                        <li class="submenu-item <?php echo isSubpageActive('erm-upload', $current_subpage) ? 'active' : ''; ?>">
+                            <a href="?page=erm&subpage=erm-upload"><i class="fas fa-cloud-upload-alt"></i><span>Upload Records</span></a>
+                        </li>
+                        <li class="submenu-item <?php echo isSubpageActive('erm-verification', $current_subpage) ? 'active' : ''; ?>">
+                            <a href="?page=erm&subpage=erm-verification"><i class="fas fa-clipboard-check"></i><span>Verification Queue</span></a>
+                        </li>
+                        <li class="submenu-item <?php echo isSubpageActive('erm-expiration', $current_subpage) ? 'active' : ''; ?>">
+                            <a href="?page=erm&subpage=erm-expiration"><i class="fas fa-hourglass-half"></i><span>Expiration Tracking</span></a>
+                        </li>
+                        <li class="submenu-item <?php echo isSubpageActive('erm-archives', $current_subpage) ? 'active' : ''; ?>">
+                            <a href="?page=erm&subpage=erm-archives"><i class="fas fa-box-archive"></i><span>Archives</span></a>
+                        </li>
+                        <li class="submenu-item <?php echo isSubpageActive('erm-audit', $current_subpage) ? 'active' : ''; ?>">
+                            <a href="?page=erm&subpage=erm-audit"><i class="fas fa-history"></i><span>Audit Trail</span></a>
+                        </li>
                     </ul>
                 </ul>
             </div>
+
+            <!-- ESS ADMIN -->
+            <div class="sidebar-section">
+                <?php if (!$collapsed): ?>
+                <div class="section-header">
+                    <i class="fas fa-user-shield"></i>
+                    <span>ESS ADMIN</span>
+                </div>
+                <?php endif; ?>
+                <ul class="nav-menu">
+                    <li class="nav-item has-submenu <?php echo isModuleActive('ess-admin', $current_page, $current_subpage) ? 'active' : ''; ?>" style="--item-color: #0e4c92;">
+                        <a href="javascript:void(0)" onclick="toggleSubmenu('ess-admin-submenu')">
+                            <div class="icon-wrapper"><i class="fas fa-users-cog"></i></div>
+                            <?php if (!$collapsed): ?>
+                            <span class="nav-label">ESS Management</span>
+                            <i class="fas fa-chevron-down submenu-arrow"></i>
+                            <div class="nav-indicator"></div>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <ul class="submenu <?php echo isModuleActive('ess-admin', $current_page, $current_subpage) ? 'active' : ''; ?>" id="ess-admin-submenu">
+                        <li class="submenu-item <?php echo isSubpageActive('ess-accounts', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-accounts"><i class="fas fa-user-plus"></i><span>ESS Accounts</span></a></li>
+                        <li class="submenu-item <?php echo isSubpageActive('ess-announcements', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-announcements"><i class="fas fa-bullhorn"></i><span>Announcements</span></a></li>
+                        <li class="submenu-item <?php echo isSubpageActive('ess-requests', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-requests"><i class="fas fa-inbox"></i><span>Employee Requests</span></a></li>
+                        <li class="submenu-item <?php echo isSubpageActive('ess-documents', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-documents"><i class="fas fa-file-alt"></i><span>Document Requests</span></a></li>
+                        <li class="submenu-item <?php echo isSubpageActive('ess-settings', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-settings"><i class="fas fa-sliders-h"></i><span>ESS Settings</span></a></li>
+                    </ul>
+                </ul>
+            </div>
+
+       
+                
 
             <!-- ADMIN -->
             <div class="sidebar-section">
@@ -342,31 +388,21 @@ function logout() {
     }
 }
 
-// ============================================================
-// 1. Ensure active submenu is visible on load
-// 2. Auto-scroll sidebar so the active item stays in view
-// ============================================================
 document.addEventListener('DOMContentLoaded', function () {
-    // Make sure the active submenu opens
     document.querySelectorAll('.submenu.active').forEach(s => {
         s.style.display = 'block';
     });
 
-    // Small delay to let layout settle, then scroll active item into view
     setTimeout(function () {
-        // Priority: active submenu item → active top-level nav item
         const activeSub  = document.querySelector('.submenu-item.active a');
         const activeTop  = document.querySelector('.nav-item.active > a');
         const target     = activeSub || activeTop;
-
-        // Find the scrollable sidebar container
-        const container = document.querySelector('.sidebar-nav-container')
-                       || document.querySelector('.sidebar-content')
-                       || document.querySelector('.unique-sidebar');
+        const container  = document.querySelector('.sidebar-nav-container')
+                        || document.querySelector('.sidebar-content')
+                        || document.querySelector('.unique-sidebar');
 
         if (!target || !container) return;
 
-        // Compute scroll position so target is vertically centered
         const targetRect    = target.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         const offset        = targetRect.top - containerRect.top;
@@ -374,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         container.scrollTo({
             top: Math.max(0, desiredScroll),
-            behavior: 'auto'      // use 'smooth' for an animated scroll
+            behavior: 'auto'
         });
     }, 50);
 });
