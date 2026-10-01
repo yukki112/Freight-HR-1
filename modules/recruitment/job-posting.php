@@ -13,7 +13,7 @@ $error = '';
 function generateApplicationLink($job_code, $expiration_days = 30) {
     $link_code = bin2hex(random_bytes(16));
     $expiration = date('Y-m-d H:i:s', strtotime("+{$expiration_days} days"));
-    $base_url = 'http://localhost/hr1';
+    $base_url = 'https://recruitment-onboarding-hr1-freight.hostforgeplatforms.com/';
     $application_link = $base_url . '/apply.php?code=' . $link_code;
     
     return [

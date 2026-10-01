@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FreightMaster - Login</title>
+    <title>Login — Priority Handling Logistics, Inc.</title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         * {
@@ -50,12 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0a1929;
+            background: linear-gradient(135deg, #0a1929 0%, #1a2942 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 2rem;
+            color: #f8fafc;
         }
 
         .login-screen {
@@ -88,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             min-height: 500px;
+            border: 1px solid rgba(58, 69, 84, 0.5);
         }
 
         .welcome-panel {
@@ -97,6 +99,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: center;
             padding: 3rem;
             background: linear-gradient(135deg, #1e3a52 0%, #2d5a7b 100%);
+            position: relative;
+        }
+
+        .welcome-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(14, 165, 233, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.15) 0%, transparent 50%);
+            pointer-events: none;
         }
 
         .welcome-content {
@@ -104,42 +117,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flex-direction: column;
             align-items: center;
             gap: 1.5rem;
+            position: relative;
+            z-index: 1;
         }
 
         .welcome-logo {
             width: 200px;
             height: 200px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 4px solid rgba(255, 255, 255, 0.2);
+            border: 4px solid rgba(255, 255, 255, 0.15);
             overflow: hidden;
             padding: 20px;
-            border-radius: 50%;
+            backdrop-filter: blur(10px);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4); }
+            50% { transform: scale(1.03); box-shadow: 0 0 0 20px rgba(14, 165, 233, 0); }
         }
 
         .welcome-logo img {
             width: 100%;
             height: 100%;
             object-fit: contain;
-            border-radius: 50%;
-            
         }
 
         .welcome-text {
             color: #ffffff;
             font-size: 1.5rem;
-            font-weight: 600;
+            font-weight: 700;
             text-align: center;
+            letter-spacing: 0.3px;
         }
 
         .welcome-subtext {
             color: rgba(255, 255, 255, 0.7);
             font-size: 1rem;
             text-align: center;
-            max-width: 300px;
+            max-width: 320px;
+            line-height: 1.6;
         }
 
         .login-panel {
@@ -160,13 +181,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .login-box .logo-icon {
             width: 80px;
             height: 80px;
-            background: linear-gradient(135deg, #0e4c92, #1a5da0);
+            background: rgba(14, 165, 233, 0.1);
             border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 1.5rem;
             padding: 15px;
+            border: 1px solid rgba(14, 165, 233, 0.2);
         }
 
         .login-box .logo-icon img {
@@ -174,7 +196,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 100%;
             object-fit: contain;
             border-radius: 20%;
-         
         }
 
         .login-box h2 {
@@ -288,69 +309,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             gap: 0.5rem;
         }
 
-        .divider {
-            display: flex;
-            align-items: center;
-            text-align: center;
-            margin: 1.5rem 0 1rem;
-            color: #64748b;
-            font-size: 0.8rem;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            border-bottom: 1px solid #3a4554;
-        }
-
-        .divider span {
-            margin: 0 0.75rem;
-        }
-
-        .demo-credentials {
-            background: #2a3544;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
-            text-align: left;
-        }
-
-        .demo-credentials p {
-            color: #e2e8f0;
-            margin-bottom: 0.75rem;
-            font-weight: 600;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .demo-credentials p i {
-            color: #0ea5e9;
-            width: 16px;
-            height: 16px;
-        }
-
-        .demo-credentials ul {
-            list-style: none;
-            color: #94a3b8;
-            font-size: 0.8rem;
-        }
-
-        .demo-credentials li {
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .demo-credentials li i {
-            color: #0ea5e9;
-            width: 14px;
-            height: 14px;
-        }
-
         .signup-link {
             margin-top: 1.5rem;
             text-align: center;
@@ -388,6 +346,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #0ea5e9;
         }
 
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 1rem;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.3s;
+        }
+
+        .back-home:hover {
+            color: #0ea5e9;
+        }
+
         @media (max-width: 990px) {
             body {
                 padding: 1rem;
@@ -421,18 +394,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="welcome-panel">
                 <div class="welcome-content">
                     <div class="welcome-logo">
-                        <!-- Replace this path with your actual logo image path -->
-                        <img src="assets/images/logo1.png" alt="FreightMaster Logo">
+                        <img src="assets/images/LOGO.jpg" alt="Priority Handling Logistics Logo">
                     </div>
-                    <p class="welcome-text">FreightMaster</p>
-                    <p class="welcome-subtext">Your complete freight management solution</p>
+                    <p class="welcome-text">Priority Handling Logistics, Inc.</p>
+                    <p class="welcome-subtext">Complete HR Management System for Logistics Excellence</p>
                 </div>
             </div>
             <div class="login-panel">
                 <div class="login-box">
                     <div class="logo-icon">
-                        <!-- Replace this path with your actual logo image path -->
-                        <img src="assets/images/logo1.png" alt="FreightMaster Logo">
+                        <img src="assets/images/LOGO.jpg" alt="Priority Handling Logistics Logo">
                     </div>
                     <h2>Welcome Back</h2>
                         
@@ -466,13 +437,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="signup-link">
                         Don't have an account? <a href="#">Contact Administrator</a>
                     </div>
+
+                    <a href="index.php" class="back-home">
+                        <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back to Home
+                    </a>
                 </div>
             </div>
         </div>
         
         <div class="footer">
-            © 2025 FreightMaster Management System. All rights reserved. &nbsp;|&nbsp;
-            <a href="#">Terms & Conditions</a> &nbsp;|&nbsp;
+            &copy; 2026 Priority Handling Logistics, Inc. All rights reserved. &nbsp;|&nbsp;
+            <a href="#">Terms &amp; Conditions</a> &nbsp;|&nbsp;
             <a href="#">Privacy Policy</a>
         </div>
     </div>
