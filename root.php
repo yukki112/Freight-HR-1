@@ -1,5 +1,9 @@
 <?php
 // root.php
+// ⚠️ MUST be the very first line — starts output buffering so included
+// modules can safely call header() without "headers already sent" errors.
+ob_start();
+
 require_once 'includes/config.php';
 
 if (!isLoggedIn()) {
@@ -71,7 +75,6 @@ $unread_notifications = getUnreadNotificationCount($pdo, $_SESSION['user_id'] ??
                     if (isset($core_files[$core_sub]) && file_exists($core_files[$core_sub])) {
                         include $core_files[$core_sub];
                     } else {
-                        // Fallback
                         if (file_exists('modules/core-hr/employee-master-data.php')) {
                             include 'modules/core-hr/employee-master-data.php';
                         } else {
@@ -100,7 +103,6 @@ $unread_notifications = getUnreadNotificationCount($pdo, $_SESSION['user_id'] ??
                     if (isset($erm_files[$erm_sub]) && file_exists($erm_files[$erm_sub])) {
                         include $erm_files[$erm_sub];
                     } else {
-                        // Fallback
                         if (file_exists('modules/erm/erm-dashboard.php')) {
                             include 'modules/erm/erm-dashboard.php';
                         } else {
@@ -127,7 +129,6 @@ $unread_notifications = getUnreadNotificationCount($pdo, $_SESSION['user_id'] ??
                     if (isset($ess_files[$ess_sub]) && file_exists($ess_files[$ess_sub])) {
                         include $ess_files[$ess_sub];
                     } else {
-                        // Fallback
                         if (file_exists('modules/admin-ess/ess-accounts.php')) {
                             include 'modules/admin-ess/ess-accounts.php';
                         } else {
@@ -177,3 +178,9 @@ $unread_notifications = getUnreadNotificationCount($pdo, $_SESSION['user_id'] ??
     </script>
 </body>
 </html>
+<?php
+// Flush the buffer at the very end
+if (ob_get_level() > 0) {
+    ob_end_flush();
+}
+?>

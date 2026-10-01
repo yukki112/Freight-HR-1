@@ -1,5 +1,5 @@
 <?php
-// Start output buffering at the VERY FIRST LINE - NO SPACES OR CHARACTERS BEFORE THIS
+
 
 // modules/recruitment/interview-panel.php
 $page_title = "Interview Panel Evaluation";
@@ -1704,5 +1704,5 @@ document.addEventListener('DOMContentLoaded', updatePagination);
 <?php endif; ?>
 
 <?php
-
+ob_end_flush();
 ?>
