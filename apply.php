@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
         $job_id = $_POST['job_id'];
         
         // Validate required fields
-        $required = ['first_name', 'last_name', 'email', 'phone', 'birth_date', 'gender', 'address', 'city', 'province'];
+        $required = ['first_name', 'last_name', 'email', 'phone', 'birth_date', 'gender', 'address', 'city', 'province', 'highest_education', 'skills'];
         foreach ($required as $field) {
             if (empty($_POST[$field])) {
                 throw new Exception("All required fields must be filled out");
@@ -34,6 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
         // Validate resume upload
         if (!isset($_FILES['resume']) || $_FILES['resume']['error'] !== UPLOAD_ERR_OK) {
             throw new Exception("Resume/CV is required");
+        }
+        
+        // Validate photo upload
+        if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Profile photo is required");
         }
         
         // Generate application number
@@ -84,18 +89,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
             }
         }
         
-        // Prepare work experience as JSON
+        // Prepare work experience as JSON (respects "no work experience" checkbox)
         $work_experience = [];
-        if (isset($_POST['company']) && is_array($_POST['company'])) {
-            for ($i = 0; $i < count($_POST['company']); $i++) {
-                if (!empty($_POST['company'][$i])) {
-                    $work_experience[] = [
-                        'company' => $_POST['company'][$i],
-                        'position' => $_POST['position'][$i] ?? '',
-                        'from_year' => $_POST['from_year'][$i] ?? '',
-                        'to_year' => $_POST['to_year'][$i] ?? '',
-                        'responsibilities' => $_POST['responsibilities'][$i] ?? ''
-                    ];
+        if (!isset($_POST['no_work_experience'])) {
+            if (isset($_POST['company']) && is_array($_POST['company'])) {
+                for ($i = 0; $i < count($_POST['company']); $i++) {
+                    if (!empty($_POST['company'][$i])) {
+                        $work_experience[] = [
+                            'company' => $_POST['company'][$i],
+                            'position' => $_POST['position'][$i] ?? '',
+                            'from_year' => $_POST['from_year'][$i] ?? '',
+                            'to_year' => $_POST['to_year'][$i] ?? '',
+                            'responsibilities' => $_POST['responsibilities'][$i] ?? ''
+                        ];
+                    }
                 }
             }
         }
@@ -116,7 +123,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
             }
         }
         
-        // FIXED: Count all 38 columns correctly
+        // Build education data based on highest_education selection
+        $highest = $_POST['highest_education'];
+        $elementary_school = null; $elementary_year = null;
+        $high_school = null; $high_school_year = null;
+        $senior_high = null; $senior_high_strand = null; $senior_high_year = null;
+        $college = null; $college_course = null; $college_year = null;
+        $vocational = null; $vocational_course = null; $vocational_year = null;
+        
+        switch ($highest) {
+            case 'elementary':
+                $elementary_school = $_POST['elementary_school'] ?? null;
+                $elementary_year = $_POST['elementary_year'] ?? null;
+                break;
+            case 'high_school':
+                $high_school = $_POST['high_school'] ?? null;
+                $high_school_year = $_POST['high_school_year'] ?? null;
+                break;
+            case 'senior_high':
+                $senior_high = $_POST['senior_high'] ?? null;
+                $senior_high_strand = $_POST['senior_high_strand'] ?? null;
+                $senior_high_year = $_POST['senior_high_year'] ?? null;
+                break;
+            case 'college':
+                $college = $_POST['college'] ?? null;
+                $college_course = $_POST['college_course'] ?? null;
+                $college_year = $_POST['college_year'] ?? null;
+                break;
+            case 'vocational':
+                $vocational = $_POST['vocational'] ?? null;
+                $vocational_course = $_POST['vocational_course'] ?? null;
+                $vocational_year = $_POST['vocational_year'] ?? null;
+                break;
+        }
+        
         $sql = "INSERT INTO job_applications (
             application_number, 
             job_posting_id, 
@@ -162,52 +202,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
         
         $stmt = $pdo->prepare($sql);
         
-        // FIXED: Match exactly 36 parameters (38 columns - 2 default columns status & notes)
         $params = [
-            $application_number,                    // 1
-            $job_id,                                // 2
-            null,                                   // 3 - job_posting_link_id (null by default)
-            $_POST['first_name'],                    // 4
-            $_POST['last_name'],                     // 5
-            $_POST['email'],                         // 6
-            $_POST['phone'],                         // 7
-            $_POST['birth_date'],                    // 8
-            $_POST['gender'],                         // 9
-            $_POST['address'],                        // 10
-            $_POST['city'],                           // 11
-            $_POST['province'],                       // 12
-            $_POST['postal_code'] ?? null,            // 13
-            $_POST['elementary_school'] ?? null,      // 14
-            $_POST['elementary_year'] ?? null,        // 15
-            $_POST['high_school'] ?? null,            // 16
-            $_POST['high_school_year'] ?? null,       // 17
-            $_POST['senior_high'] ?? null,            // 18
-            $_POST['senior_high_strand'] ?? null,     // 19
-            $_POST['senior_high_year'] ?? null,       // 20
-            $_POST['college'] ?? null,                 // 21
-            $_POST['college_course'] ?? null,          // 22
-            $_POST['college_year'] ?? null,            // 23
-            $_POST['vocational'] ?? null,              // 24
-            $_POST['vocational_course'] ?? null,       // 25
-            $_POST['vocational_year'] ?? null,         // 26
-            !empty($work_experience) ? json_encode($work_experience) : null,  // 27
-            $_POST['skills'] ?? null,                  // 28
-            $_POST['certifications'] ?? null,          // 29
-            !empty($references) ? json_encode($references) : null,  // 30
-            $resume_path,                              // 31
-            $cover_letter_path,                         // 32
-            $photo_path,                                // 33
-            $_SERVER['REMOTE_ADDR'] ?? null,            // 34
-            $_SERVER['HTTP_USER_AGENT'] ?? null,        // 35
-            date('Y-m-d H:i:s')                         // 36 - applied_at
+            $application_number,
+            $job_id,
+            null,
+            $_POST['first_name'],
+            $_POST['last_name'],
+            $_POST['email'],
+            $_POST['phone'],
+            $_POST['birth_date'],
+            $_POST['gender'],
+            $_POST['address'],
+            $_POST['city'],
+            $_POST['province'],
+            $_POST['postal_code'] ?? null,
+            $elementary_school,
+            $elementary_year,
+            $high_school,
+            $high_school_year,
+            $senior_high,
+            $senior_high_strand,
+            $senior_high_year,
+            $college,
+            $college_course,
+            $college_year,
+            $vocational,
+            $vocational_course,
+            $vocational_year,
+            !empty($work_experience) ? json_encode($work_experience) : null,
+            $_POST['skills'],
+            $_POST['certifications'] ?? null,
+            !empty($references) ? json_encode($references) : null,
+            $resume_path,
+            $cover_letter_path,
+            $photo_path,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            $_SERVER['HTTP_USER_AGENT'] ?? null,
+            date('Y-m-d H:i:s')
         ];
-        
-        // Debug: Check if parameter count matches
-        // echo "Number of parameters: " . count($params); exit;
         
         $stmt->execute($params);
         
-        // Redirect to success page
         header("Location: apply.php?code=$code&success=1&app=" . urlencode($application_number));
         exit;
         
@@ -216,7 +251,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
     }
 }
 
-// Check for success
 if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
     $message = "Application submitted successfully! Your application number is: " . htmlspecialchars($_GET['app']);
 }
@@ -226,21 +260,22 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apply for Position - HR 1 Freight Management</title>
+    <title>Apply — Priority Handling Logistics, Inc.</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* All your CSS here - same as previous */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         
         body {
-            background: #f5f9ff;
+            background: linear-gradient(135deg, #0a1929 0%, #1a2942 100%);
             min-height: 100vh;
             padding: 40px 20px;
+            color: #f8fafc;
         }
         
         .container {
@@ -248,106 +283,108 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             margin: 0 auto;
         }
         
-        /* Brand Color: #0e4c92 */
-        .brand-color {
-            color: #0e4c92;
-        }
-        
-        .brand-bg {
-            background: #0e4c92;
-        }
-        
-        .brand-border {
-            border-color: #0e4c92;
-        }
-        
-        .brand-gradient {
-            background: linear-gradient(135deg, #0e4c92 0%, #1a5da0 100%);
-        }
-        
-        /* Company Header with Logo */
+        /* Company Header */
         .company-header {
-            background: white;
+            background: rgba(30, 41, 54, 0.85);
+            backdrop-filter: blur(20px);
             border-radius: 20px;
             padding: 25px;
             margin-bottom: 25px;
-            box-shadow: 0 10px 30px rgba(14, 76, 146, 0.08);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             display: flex;
             align-items: center;
             gap: 20px;
             flex-wrap: wrap;
+            border: 1px solid rgba(58, 69, 84, 0.5);
         }
         
         .logo-wrapper {
             width: 70px;
             height: 70px;
-            background: white;
+            background: rgba(14, 165, 233, 0.1);
             border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 20px rgba(14, 76, 146, 0.15);
-            border: 2px solid rgba(14, 76, 146, 0.1);
+            box-shadow: 0 10px 20px rgba(14, 165, 233, 0.15);
+            border: 2px solid rgba(14, 165, 233, 0.2);
+            padding: 8px;
         }
         
         .logo-wrapper img {
-            width: 60px;
-            height: 60px;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
+            border-radius: 10px;
         }
         
         .company-text h1 {
-            font-size: 24px;
-            color: #2d3748;
+            font-size: 22px;
+            color: #ffffff;
             font-weight: 700;
             margin-bottom: 5px;
         }
         
         .company-text p {
-            color: #718096;
-            font-size: 14px;
+            color: #94a3b8;
+            font-size: 13px;
             display: flex;
             align-items: center;
             gap: 15px;
             flex-wrap: wrap;
         }
         
-        .company-text p i {
-            color: #0e4c92;
-            width: 16px;
+        .company-text p span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         
-        /* Job Header - Step 0 */
+        .company-text p i {
+            color: #0ea5e9;
+            width: 14px;
+        }
+        
+        /* Job Header */
         .job-header {
-            background: white;
+            background: rgba(30, 41, 54, 0.85);
+            backdrop-filter: blur(20px);
             border-radius: 20px;
             padding: 30px;
             margin-bottom: 25px;
-            box-shadow: 0 10px 30px rgba(14, 76, 146, 0.08);
-            border-left: 5px solid #0e4c92;
-            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            border-left: 5px solid #0ea5e9;
+            border-top: 1px solid rgba(58, 69, 84, 0.5);
+            border-right: 1px solid rgba(58, 69, 84, 0.5);
+            border-bottom: 1px solid rgba(58, 69, 84, 0.5);
             animation: slideDown 0.5s;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         .job-badge {
             display: inline-block;
-            background: rgba(14, 76, 146, 0.1);
-            color: #0e4c92;
-            padding: 5px 15px;
+            background: rgba(14, 165, 233, 0.15);
+            color: #0ea5e9;
+            padding: 6px 16px;
             border-radius: 30px;
             font-size: 12px;
             font-weight: 600;
             margin-bottom: 15px;
+            border: 1px solid rgba(14, 165, 233, 0.3);
         }
         
         .job-header h1 {
             font-size: 28px;
-            color: #2d3748;
+            color: #ffffff;
             margin-bottom: 10px;
         }
         
         .job-code {
-            color: #0e4c92;
+            color: #0ea5e9;
             font-weight: 500;
             font-size: 14px;
             margin-bottom: 20px;
@@ -361,9 +398,10 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin: 25px 0;
-            background: #f8fafc;
+            background: rgba(15, 23, 42, 0.5);
             border-radius: 16px;
             padding: 20px;
+            border: 1px solid rgba(58, 69, 84, 0.5);
         }
         
         .meta-item {
@@ -375,38 +413,42 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         .meta-icon {
             width: 40px;
             height: 40px;
-            background: rgba(14, 76, 146, 0.1);
+            background: rgba(14, 165, 233, 0.15);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #0e4c92;
-            font-size: 18px;
+            color: #0ea5e9;
+            font-size: 16px;
+            flex-shrink: 0;
         }
         
         .meta-content h4 {
-            font-size: 12px;
-            color: #718096;
+            font-size: 11px;
+            color: #94a3b8;
             font-weight: 500;
             margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .meta-content p {
             font-size: 14px;
             font-weight: 600;
-            color: #2d3748;
+            color: #ffffff;
         }
         
         .job-description {
-            background: #f8fafc;
+            background: rgba(15, 23, 42, 0.5);
             border-radius: 16px;
             padding: 20px;
             margin-top: 15px;
+            border: 1px solid rgba(58, 69, 84, 0.5);
         }
         
         .job-description h3 {
-            font-size: 16px;
-            color: #0e4c92;
+            font-size: 15px;
+            color: #0ea5e9;
             margin-bottom: 10px;
             display: flex;
             align-items: center;
@@ -414,22 +456,26 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         }
         
         .job-description p {
-            color: #4a5568;
-            line-height: 1.6;
+            color: #cbd5e1;
+            line-height: 1.7;
+            font-size: 14px;
         }
         
         /* Application Form */
         .application-form {
-            background: white;
-            border-radius: 30px;
+            background: rgba(30, 41, 54, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
             padding: 40px;
-            box-shadow: 0 20px 40px rgba(14, 76, 146, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(58, 69, 84, 0.5);
         }
         
         /* Progress Bar */
         .progress-container {
             margin-bottom: 40px;
             position: relative;
+            padding: 0 10px;
         }
         
         .progress-bar {
@@ -447,30 +493,29 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         }
         
         .step-circle {
-            width: 45px;
-            height: 45px;
-            background: white;
-            border: 3px solid #e2e8f0;
+            width: 42px;
+            height: 42px;
+            background: #1e2936;
+            border: 3px solid #3a4554;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 10px;
-            font-weight: 600;
-            color: #a0aec0;
+            margin: 0 auto 8px;
+            font-weight: 700;
+            color: #64748b;
             transition: all 0.3s;
             position: relative;
             z-index: 3;
-            background: white;
-            font-size: 16px;
+            font-size: 14px;
         }
         
         .progress-step.active .step-circle {
-            border-color: #0e4c92;
-            background: #0e4c92;
+            border-color: #0ea5e9;
+            background: #0ea5e9;
             color: white;
-            box-shadow: 0 5px 20px rgba(14, 76, 146, 0.3);
-            transform: scale(1.05);
+            box-shadow: 0 0 0 6px rgba(14, 165, 233, 0.15), 0 5px 20px rgba(14, 165, 233, 0.4);
+            transform: scale(1.08);
         }
         
         .progress-step.completed .step-circle {
@@ -479,53 +524,70 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             color: white;
         }
         
+        .progress-step.completed .step-circle::before {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            font-size: 14px;
+        }
+        
+        .progress-step.completed .step-circle {
+            font-size: 0;
+        }
+        
+        .progress-step.completed .step-circle::before {
+            font-size: 14px;
+        }
+        
         .step-label {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
-            color: #718096;
+            color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
         .progress-step.active .step-label {
-            color: #0e4c92;
+            color: #0ea5e9;
             font-weight: 700;
         }
         
         .progress-line {
             position: absolute;
-            top: 22px;
-            left: 0;
-            right: 0;
+            top: 20px;
+            left: 5%;
+            right: 5%;
             height: 3px;
-            background: #e2e8f0;
+            background: #3a4554;
             z-index: 1;
+            border-radius: 3px;
         }
         
         .progress-line-fill {
             height: 100%;
-            background: #0e4c92;
-            transition: width 0.3s;
+            background: linear-gradient(90deg, #0ea5e9, #10b981);
+            transition: width 0.4s ease;
+            border-radius: 3px;
         }
         
         /* Form Steps */
         .form-step {
             display: none;
-            animation: fadeIn 0.5s;
         }
         
         .form-step.active {
             display: block;
+            animation: fadeIn 0.4s ease;
         }
         
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
         
         .step-title {
             font-size: 22px;
-            color: #2d3748;
+            color: #ffffff;
             margin-bottom: 30px;
             display: flex;
             align-items: center;
@@ -536,22 +598,22 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         .step-title i {
             width: 45px;
             height: 45px;
-            background: rgba(14, 76, 146, 0.1);
+            background: rgba(14, 165, 233, 0.15);
             border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #0e4c92;
-            font-size: 22px;
+            color: #0ea5e9;
+            font-size: 20px;
         }
         
         /* Form Sections */
         .form-section {
-            background: #f8fafc;
-            border-radius: 20px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 18px;
             padding: 25px;
             margin-bottom: 25px;
-            border: 1px solid rgba(14, 76, 146, 0.1);
+            border: 1px solid rgba(58, 69, 84, 0.5);
         }
         
         .section-header {
@@ -559,19 +621,19 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             align-items: center;
             gap: 10px;
             margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid rgba(14, 76, 146, 0.1);
+            padding-bottom: 12px;
+            border-bottom: 2px solid rgba(14, 165, 233, 0.15);
         }
         
         .section-header h3 {
-            font-size: 18px;
-            color: #2d3748;
+            font-size: 16px;
+            color: #ffffff;
             font-weight: 600;
         }
         
         .section-header i {
-            color: #0e4c92;
-            font-size: 20px;
+            color: #0ea5e9;
+            font-size: 18px;
         }
         
         .form-row {
@@ -589,12 +651,12 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             display: block;
             font-size: 13px;
             font-weight: 600;
-            color: #4a5568;
+            color: #cbd5e1;
             margin-bottom: 8px;
         }
         
         .form-group label .required {
-            color: #e53e3e;
+            color: #ef4444;
             margin-left: 3px;
         }
         
@@ -603,75 +665,156 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         .form-group textarea {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid #3a4554;
             border-radius: 12px;
             font-size: 14px;
             transition: all 0.3s;
-            background: white;
+            background: #1e2936;
+            color: #e2e8f0;
+            font-family: inherit;
         }
         
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #0e4c92;
-            box-shadow: 0 0 0 3px rgba(14, 76, 146, 0.1);
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+            background: #1e2936;
         }
         
         .form-group input:hover,
         .form-group select:hover,
         .form-group textarea:hover {
-            border-color: #0e4c92;
+            border-color: rgba(14, 165, 233, 0.6);
         }
         
-        /* Education Cards */
-        .education-card {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(14, 76, 146, 0.1);
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: #64748b;
+        }
+        
+        .form-group select option {
+            background: #1e2936;
+            color: #e2e8f0;
+        }
+        
+        .form-group small {
+            display: block;
+            color: #64748b;
+            margin-top: 6px;
+            font-size: 12px;
+        }
+        
+        /* Highest Education Selector */
+        .edu-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        
+        .edu-option {
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .edu-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .edu-option-inner {
+            padding: 16px 12px;
+            border: 2px solid #3a4554;
+            border-radius: 14px;
+            text-align: center;
+            transition: all 0.3s;
+            background: #1e2936;
+        }
+        
+        .edu-option-inner i {
+            font-size: 22px;
+            color: #64748b;
+            display: block;
+            margin-bottom: 8px;
             transition: all 0.3s;
         }
         
-        .education-card:hover {
-            box-shadow: 0 10px 30px rgba(14, 76, 146, 0.1);
-            border-color: #0e4c92;
+        .edu-option-inner span {
+            font-size: 12px;
+            font-weight: 600;
+            color: #cbd5e1;
+            display: block;
         }
         
-        .education-card h4 {
-            color: #0e4c92;
-            margin-bottom: 15px;
-            font-size: 16px;
+        .edu-option input:checked + .edu-option-inner {
+            border-color: #0ea5e9;
+            background: rgba(14, 165, 233, 0.1);
+            box-shadow: 0 5px 20px rgba(14, 165, 233, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .edu-option input:checked + .edu-option-inner i {
+            color: #0ea5e9;
+        }
+        
+        .edu-option input:checked + .edu-option-inner span {
+            color: #ffffff;
+        }
+        
+        .edu-option-inner:hover {
+            border-color: rgba(14, 165, 233, 0.5);
+        }
+        
+        .edu-detail {
+            display: none;
+            background: rgba(14, 165, 233, 0.05);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px dashed rgba(14, 165, 233, 0.3);
+            animation: fadeIn 0.4s;
+        }
+        
+        .edu-detail.active {
+            display: block;
+        }
+        
+        .edu-detail h4 {
+            color: #0ea5e9;
+            margin-bottom: 20px;
+            font-size: 15px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
         
-        .education-card h4 i {
-            font-size: 18px;
-        }
-        
         /* Experience Entry */
         .experience-entry {
-            background: white;
+            background: rgba(15, 23, 42, 0.5);
             border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(14, 76, 146, 0.1);
+            padding: 22px;
+            margin-bottom: 18px;
+            border: 1px solid rgba(58, 69, 84, 0.5);
             position: relative;
+            transition: all 0.3s;
+        }
+        
+        .experience-entry:hover {
+            border-color: rgba(14, 165, 233, 0.3);
         }
         
         .remove-entry {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #fee2e2;
+            top: 12px;
+            right: 12px;
+            background: rgba(239, 68, 68, 0.15);
             color: #ef4444;
-            border: none;
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -682,12 +825,13 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         .remove-entry:hover {
             background: #ef4444;
             color: white;
+            transform: scale(1.1);
         }
         
         .add-more-btn {
-            background: white;
-            border: 2px dashed #0e4c92;
-            color: #0e4c92;
+            background: transparent;
+            border: 2px dashed rgba(14, 165, 233, 0.5);
+            color: #0ea5e9;
             padding: 15px;
             border-radius: 12px;
             width: 100%;
@@ -702,54 +846,108 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         }
         
         .add-more-btn:hover {
-            background: rgba(14, 76, 146, 0.05);
+            background: rgba(14, 165, 233, 0.1);
             border-style: solid;
+            border-color: #0ea5e9;
+        }
+        
+        /* No Work Experience Checkbox */
+        .no-exp-checkbox {
+            background: rgba(14, 165, 233, 0.08);
+            border: 2px solid rgba(14, 165, 233, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .no-exp-checkbox:hover {
+            background: rgba(14, 165, 233, 0.12);
+            border-color: #0ea5e9;
+        }
+        
+        .no-exp-checkbox input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            accent-color: #0ea5e9;
+            flex-shrink: 0;
+        }
+        
+        .no-exp-checkbox-content {
+            flex: 1;
+        }
+        
+        .no-exp-checkbox-content strong {
+            display: block;
+            color: #ffffff;
+            font-size: 15px;
+            margin-bottom: 3px;
+        }
+        
+        .no-exp-checkbox-content span {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        
+        .no-exp-checkbox input[type="checkbox"]:checked ~ .no-exp-checkbox-content strong {
+            color: #0ea5e9;
+        }
+        
+        #experience-container.disabled {
+            opacity: 0.4;
+            pointer-events: none;
         }
         
         /* File Upload */
         .file-upload-area {
-            border: 3px dashed rgba(14, 76, 146, 0.2);
+            border: 3px dashed rgba(14, 165, 233, 0.3);
             border-radius: 16px;
-            padding: 30px;
+            padding: 30px 20px;
             text-align: center;
-            background: #f8fafc;
+            background: rgba(15, 23, 42, 0.3);
             cursor: pointer;
             transition: all 0.3s;
-            margin-bottom: 15px;
         }
         
         .file-upload-area:hover {
-            border-color: #0e4c92;
-            background: rgba(14, 76, 146, 0.02);
+            border-color: #0ea5e9;
+            background: rgba(14, 165, 233, 0.05);
+            transform: translateY(-2px);
         }
         
         .file-upload-area i {
-            font-size: 48px;
-            color: #0e4c92;
-            margin-bottom: 10px;
+            font-size: 42px;
+            color: #0ea5e9;
+            margin-bottom: 12px;
+            display: block;
         }
         
         .file-upload-area p {
-            color: #2d3748;
+            color: #ffffff;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
             margin-bottom: 5px;
         }
         
         .file-upload-area small {
-            color: #718096;
+            color: #64748b;
             font-size: 12px;
         }
         
         .file-info {
             display: none;
-            background: rgba(14, 76, 146, 0.05);
+            background: rgba(16, 185, 129, 0.1);
             border-radius: 12px;
             padding: 12px 15px;
-            margin-top: 10px;
+            margin-top: 12px;
             align-items: center;
             gap: 10px;
-            border-left: 4px solid #0e4c92;
+            border-left: 4px solid #10b981;
         }
         
         .file-info.active {
@@ -761,11 +959,19 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             font-size: 18px;
         }
         
+        .file-info span {
+            color: #cbd5e1;
+            font-size: 13px;
+            word-break: break-all;
+        }
+        
         /* Navigation Buttons */
         .form-navigation {
             display: flex;
             gap: 15px;
             margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(58, 69, 84, 0.5);
         }
         
         .nav-btn {
@@ -779,30 +985,31 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             align-items: center;
             gap: 8px;
             font-size: 14px;
+            font-family: inherit;
         }
         
         .nav-btn.prev {
-            background: #f1f5f9;
-            color: #475569;
+            background: #3a4554;
+            color: #cbd5e1;
         }
         
         .nav-btn.prev:hover:not(:disabled) {
-            background: #e2e8f0;
+            background: #475569;
             transform: translateX(-3px);
         }
         
         .nav-btn.next {
-            background: #0e4c92;
+            background: #0ea5e9;
             color: white;
             flex: 1;
             justify-content: center;
-            box-shadow: 0 10px 20px rgba(14, 76, 146, 0.2);
+            box-shadow: 0 10px 20px rgba(14, 165, 233, 0.25);
         }
         
         .nav-btn.next:hover:not(:disabled) {
-            background: #1a5da0;
-            transform: translateX(3px);
-            box-shadow: 0 15px 30px rgba(14, 76, 146, 0.3);
+            background: #0284c7;
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(14, 165, 233, 0.4);
         }
         
         .nav-btn.submit {
@@ -810,17 +1017,17 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             color: white;
             flex: 1;
             justify-content: center;
-            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.2);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.25);
         }
         
         .nav-btn.submit:hover {
             background: #059669;
             transform: translateY(-2px);
-            box-shadow: 0 15px 30px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
         }
         
         .nav-btn:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
         }
         
@@ -833,8 +1040,10 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             align-items: center;
             gap: 20px;
             animation: slideDown 0.3s;
-            background: white;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background: rgba(30, 41, 54, 0.85);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(58, 69, 84, 0.5);
         }
         
         .alert-success {
@@ -853,9 +1062,33 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             color: #ef4444;
         }
         
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .alert h3 {
+            color: #ffffff;
+        }
+        
+        .alert p {
+            color: #cbd5e1;
+        }
+        
+        /* Error highlight */
+        .form-group input.error,
+        .form-group select.error,
+        .form-group textarea.error {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+        
+        .field-error {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .field-error.show {
+            display: flex;
         }
         
         /* Responsive */
@@ -865,7 +1098,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             }
             
             .application-form {
-                padding: 25px;
+                padding: 25px 20px;
             }
             
             .company-header {
@@ -873,14 +1106,18 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 text-align: center;
             }
             
+            .company-text p {
+                justify-content: center;
+            }
+            
             .progress-step .step-label {
                 display: none;
             }
             
             .step-circle {
-                width: 40px;
-                height: 40px;
-                font-size: 14px;
+                width: 36px;
+                height: 36px;
+                font-size: 13px;
             }
             
             .form-row {
@@ -888,7 +1125,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             }
             
             .form-navigation {
-                flex-direction: column;
+                flex-direction: column-reverse;
             }
             
             .nav-btn {
@@ -899,23 +1136,26 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             .job-meta-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .edu-selector {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Company Header with Logo -->
+        <!-- Company Header -->
         <div class="company-header">
             <div class="logo-wrapper">
-                <img src="assets/images/logo.png" alt="HR 1 Freight Logo" 
-                     onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=HR1&background=0e4c92&color=fff&size=100&bold=true&format=png';">
+                <img src="assets/images/LOGO.jpg" alt="Priority Handling Logistics Logo">
             </div>
             <div class="company-text">
-                <h1>HR 1 Freight Management</h1>
+                <h1>Priority Handling Logistics, Inc.</h1>
                 <p>
-                    <span><i class="fas fa-building"></i> Human Resources</span>
-                    <span><i class="fas fa-users"></i> Talent Acquisition</span>
-                    <span><i class="fas fa-clock"></i> <?php echo date('F j, Y'); ?></span>
+                    <span><i data-lucide="building-2"></i> Human Resources</span>
+                    <span><i data-lucide="users"></i> Talent Acquisition</span>
+                    <span><i data-lucide="calendar"></i> <?php echo date('F j, Y'); ?></span>
                 </p>
             </div>
         </div>
@@ -926,7 +1166,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             <div>
                 <h3 style="font-size: 22px; margin-bottom: 8px;">Application Received!</h3>
                 <p style="font-size: 16px; margin-bottom: 5px;"><?php echo $message; ?></p>
-                <p style="color: #64748b; font-size: 14px;">We'll review your application and contact you soon.</p>
+                <p style="color: #94a3b8; font-size: 14px;">We'll review your application and contact you soon.</p>
             </div>
         </div>
         <?php endif; ?>
@@ -947,23 +1187,23 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 <i class="fas fa-exclamation-triangle"></i> Link Error
             </div>
             <h1>Invalid or Expired Link</h1>
-            <p style="color: #64748b; margin-top: 15px; font-size: 16px;">This application link is invalid or has expired. Please contact the HR department for assistance.</p>
+            <p style="color: #94a3b8; margin-top: 15px; font-size: 16px;">This application link is invalid or has expired. Please contact the HR department for assistance.</p>
             <div style="margin-top: 25px;">
-                <a href="mailto:hr@freight.com" style="background: #0e4c92; color: white; padding: 12px 25px; border-radius: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                <a href="mailto:hr@priorityhandling.com" style="background: #0ea5e9; color: white; padding: 12px 25px; border-radius: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
                     <i class="fas fa-envelope"></i> Contact HR
                 </a>
             </div>
         </div>
         <?php elseif ($job && !$message): ?>
         
-        <!-- Job Header - Step 0 -->
+        <!-- Job Header -->
         <div class="job-header">
             <div class="job-badge">
-                <i class="fas fa-briefcase"></i> Step 0: Job Overview
+                <i class="fas fa-briefcase"></i> Now Hiring
             </div>
             <h1><?php echo htmlspecialchars($job['title']); ?></h1>
             <div class="job-code">
-                <i class="fas fa-hashtag" style="color: #0e4c92;"></i> <?php echo htmlspecialchars($job['job_code']); ?>
+                <i class="fas fa-hashtag" style="color: #0ea5e9;"></i> <?php echo htmlspecialchars($job['job_code']); ?>
             </div>
             
             <div class="job-meta-grid">
@@ -971,7 +1211,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                     <div class="meta-icon"><i class="fas fa-building"></i></div>
                     <div class="meta-content">
                         <h4>Department</h4>
-                        <p><?php echo ucfirst($job['department']); ?></p>
+                        <p><?php echo ucwords(str_replace('_', ' ', $job['department'])); ?></p>
                     </div>
                 </div>
                 <div class="meta-item">
@@ -1013,7 +1253,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         </div>
         
         <!-- Multi-Step Application Form -->
-        <form method="POST" enctype="multipart/form-data" class="application-form" id="applicationForm">
+        <form method="POST" enctype="multipart/form-data" class="application-form" id="applicationForm" novalidate>
             <input type="hidden" name="job_id" value="<?php echo $job['id']; ?>">
             
             <!-- Progress Bar -->
@@ -1115,7 +1355,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                     <div class="form-row">
                         <div class="form-group">
                             <label>City <span class="required">*</span></label>
-                            <input type="text" name="city" required placeholder="e.g., Manila">
+                            <input type="text" name="city" required placeholder="e.g., Quezon City">
                         </div>
                         <div class="form-group">
                             <label>Province <span class="required">*</span></label>
@@ -1129,102 +1369,151 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 </div>
             </div>
             
-            <!-- STEP 2: Education Background -->
+            <!-- STEP 2: Highest Education Attained -->
             <div class="form-step" data-step="2">
                 <div class="step-title">
                     <i class="fas fa-graduation-cap"></i>
-                    Education Background
+                    Highest Education Attained
                 </div>
                 
-                <!-- Elementary -->
-                <div class="education-card">
-                    <h4><i class="fas fa-school" style="color: #0e4c92;"></i> Elementary Education</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>School Name</label>
-                            <input type="text" name="elementary_school" placeholder="Elementary school name">
-                        </div>
-                        <div class="form-group">
-                            <label>Year Graduated</label>
-                            <input type="text" name="elementary_year" placeholder="e.g., 2010">
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-award"></i>
+                        <h3>Select Your Highest Educational Attainment <span class="required">*</span></h3>
+                    </div>
+                    
+                    <div class="edu-selector">
+                        <label class="edu-option">
+                            <input type="radio" name="highest_education" value="elementary" onchange="showEduDetail('elementary')" required>
+                            <div class="edu-option-inner">
+                                <i class="fas fa-book-reader"></i>
+                                <span>Elementary</span>
+                            </div>
+                        </label>
+                        
+                        <label class="edu-option">
+                            <input type="radio" name="highest_education" value="high_school" onchange="showEduDetail('high_school')">
+                            <div class="edu-option-inner">
+                                <i class="fas fa-school"></i>
+                                <span>High School</span>
+                            </div>
+                        </label>
+                        
+                        <label class="edu-option">
+                            <input type="radio" name="highest_education" value="senior_high" onchange="showEduDetail('senior_high')">
+                            <div class="edu-option-inner">
+                                <i class="fas fa-user-graduate"></i>
+                                <span>Senior High</span>
+                            </div>
+                        </label>
+                        
+                        <label class="edu-option">
+                            <input type="radio" name="highest_education" value="vocational" onchange="showEduDetail('vocational')">
+                            <div class="edu-option-inner">
+                                <i class="fas fa-tools"></i>
+                                <span>Vocational</span>
+                            </div>
+                        </label>
+                        
+                        <label class="edu-option">
+                            <input type="radio" name="highest_education" value="college" onchange="showEduDetail('college')">
+                            <div class="edu-option-inner">
+                                <i class="fas fa-university"></i>
+                                <span>College</span>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <!-- Elementary Detail -->
+                    <div class="edu-detail" id="edu-elementary">
+                        <h4><i class="fas fa-book-reader"></i> Elementary Education</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>School Name <span class="required">*</span></label>
+                                <input type="text" name="elementary_school" placeholder="Elementary school name">
+                            </div>
+                            <div class="form-group">
+                                <label>Year Graduated <span class="required">*</span></label>
+                                <input type="text" name="elementary_year" placeholder="e.g., 2010">
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- High School -->
-                <div class="education-card">
-                    <h4><i class="fas fa-school" style="color: #0e4c92;"></i> High School</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>School Name</label>
-                            <input type="text" name="high_school" placeholder="High school name">
-                        </div>
-                        <div class="form-group">
-                            <label>Year Graduated</label>
-                            <input type="text" name="high_school_year" placeholder="e.g., 2014">
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Senior High School -->
-                <div class="education-card">
-                    <h4><i class="fas fa-school" style="color: #0e4c92;"></i> Senior High School</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>School Name</label>
-                            <input type="text" name="senior_high" placeholder="Senior high school name">
-                        </div>
-                        <div class="form-group">
-                            <label>Strand</label>
-                            <input type="text" name="senior_high_strand" placeholder="e.g., STEM, ABM">
+                    
+                    <!-- High School Detail -->
+                    <div class="edu-detail" id="edu-high_school">
+                        <h4><i class="fas fa-school"></i> High School Education</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>School Name <span class="required">*</span></label>
+                                <input type="text" name="high_school" placeholder="High school name">
+                            </div>
+                            <div class="form-group">
+                                <label>Year Graduated <span class="required">*</span></label>
+                                <input type="text" name="high_school_year" placeholder="e.g., 2014">
+                            </div>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Year Graduated</label>
-                            <input type="text" name="senior_high_year" placeholder="e.g., 2016">
+                    
+                    <!-- Senior High Detail -->
+                    <div class="edu-detail" id="edu-senior_high">
+                        <h4><i class="fas fa-user-graduate"></i> Senior High School Education</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>School Name <span class="required">*</span></label>
+                                <input type="text" name="senior_high" placeholder="Senior high school name">
+                            </div>
+                            <div class="form-group">
+                                <label>Strand <span class="required">*</span></label>
+                                <input type="text" name="senior_high_strand" placeholder="e.g., STEM, ABM, HUMSS">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Year Graduated <span class="required">*</span></label>
+                                <input type="text" name="senior_high_year" placeholder="e.g., 2016">
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- College -->
-                <div class="education-card">
-                    <h4><i class="fas fa-university" style="color: #0e4c92;"></i> College / University</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>School Name</label>
-                            <input type="text" name="college" placeholder="College/University name">
+                    
+                    <!-- Vocational Detail -->
+                    <div class="edu-detail" id="edu-vocational">
+                        <h4><i class="fas fa-tools"></i> Vocational / Technical Education</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>School / Training Center <span class="required">*</span></label>
+                                <input type="text" name="vocational" placeholder="Training center name">
+                            </div>
+                            <div class="form-group">
+                                <label>Course / Program <span class="required">*</span></label>
+                                <input type="text" name="vocational_course" placeholder="e.g., Heavy Equipment Operation">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Course / Degree</label>
-                            <input type="text" name="college_course" placeholder="e.g., BS Information Technology">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Year Graduated</label>
-                            <input type="text" name="college_year" placeholder="e.g., 2020">
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Vocational -->
-                <div class="education-card">
-                    <h4><i class="fas fa-tools" style="color: #0e4c92;"></i> Vocational / Technical</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>School/Training Center</label>
-                            <input type="text" name="vocational" placeholder="Training center name">
-                        </div>
-                        <div class="form-group">
-                            <label>Course / Program</label>
-                            <input type="text" name="vocational_course" placeholder="e.g., Heavy Equipment Operation">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Year Completed <span class="required">*</span></label>
+                                <input type="text" name="vocational_year" placeholder="e.g., 2018">
+                            </div>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Year Completed</label>
-                            <input type="text" name="vocational_year" placeholder="e.g., 2018">
+                    
+                    <!-- College Detail -->
+                    <div class="edu-detail" id="edu-college">
+                        <h4><i class="fas fa-university"></i> College / University Education</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>School Name <span class="required">*</span></label>
+                                <input type="text" name="college" placeholder="College/University name">
+                            </div>
+                            <div class="form-group">
+                                <label>Course / Degree <span class="required">*</span></label>
+                                <input type="text" name="college_course" placeholder="e.g., BS Information Technology">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Year Graduated <span class="required">*</span></label>
+                                <input type="text" name="college_year" placeholder="e.g., 2020">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1237,40 +1526,48 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                     Work Experience
                 </div>
                 
+                <!-- No Experience Checkbox -->
+                <label class="no-exp-checkbox">
+                    <input type="checkbox" name="no_work_experience" id="noExpCheckbox" onchange="toggleNoExperience(this)">
+                    <div class="no-exp-checkbox-content">
+                        <strong>I don't have any work experience yet</strong>
+                        <span>Check this box if you're a fresh graduate or first-time job seeker</span>
+                    </div>
+                </label>
+                
                 <div id="experience-container">
-                    <!-- Experience entries will be added here -->
                     <div class="experience-entry">
                         <button type="button" class="remove-entry" onclick="removeExperience(this)">
                             <i class="fas fa-times"></i>
                         </button>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Company Name</label>
+                                <label>Company Name <span class="required">*</span></label>
                                 <input type="text" name="company[]" placeholder="Company name">
                             </div>
                             <div class="form-group">
-                                <label>Position / Role</label>
+                                <label>Position / Role <span class="required">*</span></label>
                                 <input type="text" name="position[]" placeholder="Your position">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>From Year</label>
+                                <label>From Year <span class="required">*</span></label>
                                 <input type="text" name="from_year[]" placeholder="e.g., 2020">
                             </div>
                             <div class="form-group">
-                                <label>To Year</label>
+                                <label>To Year <span class="required">*</span></label>
                                 <input type="text" name="to_year[]" placeholder="e.g., 2023 (or Present)">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Key Responsibilities</label>
+                            <label>Key Responsibilities <span class="required">*</span></label>
                             <textarea name="responsibilities[]" rows="2" placeholder="Describe your responsibilities..."></textarea>
                         </div>
                     </div>
                 </div>
                 
-                <button type="button" class="add-more-btn" onclick="addExperience()">
+                <button type="button" class="add-more-btn" onclick="addExperience()" id="addExpBtn">
                     <i class="fas fa-plus-circle"></i> Add Another Work Experience
                 </button>
             </div>
@@ -1285,13 +1582,13 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 <div class="form-section">
                     <div class="section-header">
                         <i class="fas fa-star"></i>
-                        <h3>Skills</h3>
+                        <h3>Skills <span class="required">*</span></h3>
                     </div>
                     
                     <div class="form-group">
-                        <label>Technical & Professional Skills</label>
-                        <textarea name="skills" rows="4" placeholder="List your skills (e.g., Forklift Operation, Warehouse Management, Microsoft Office, etc.)"></textarea>
-                        <small style="color: #64748b; margin-top: 5px; display: block;">Separate skills with commas</small>
+                        <label>Technical & Professional Skills <span class="required">*</span></label>
+                        <textarea name="skills" rows="5" required placeholder="List your skills (e.g., Forklift Operation, Warehouse Management, Microsoft Office, etc.)"></textarea>
+                        <small>Separate skills with commas</small>
                     </div>
                 </div>
                 
@@ -1303,8 +1600,8 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                     
                     <div class="form-group">
                         <label>Professional Certifications</label>
-                        <textarea name="certifications" rows="4" placeholder="e.g., Professional Driver's License, TESDA NC II, First Aid Certificate, etc."></textarea>
-                        <small style="color: #64748b; margin-top: 5px; display: block;">Include license numbers if applicable</small>
+                        <textarea name="certifications" rows="5" placeholder="e.g., Professional Driver's License, TESDA NC II, First Aid Certificate, etc."></textarea>
+                        <small>Include license numbers if applicable (optional)</small>
                     </div>
                 </div>
             </div>
@@ -1317,33 +1614,32 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 </div>
                 
                 <div id="references-container">
-                    <!-- Reference entries will be added here -->
                     <div class="experience-entry">
                         <button type="button" class="remove-entry" onclick="removeReference(this)">
                             <i class="fas fa-times"></i>
                         </button>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Full Name</label>
+                                <label>Full Name <span class="required">*</span></label>
                                 <input type="text" name="ref_name[]" placeholder="Reference's full name">
                             </div>
                             <div class="form-group">
-                                <label>Position</label>
+                                <label>Position <span class="required">*</span></label>
                                 <input type="text" name="ref_position[]" placeholder="e.g., Manager">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Company</label>
+                                <label>Company <span class="required">*</span></label>
                                 <input type="text" name="ref_company[]" placeholder="Company name">
                             </div>
                             <div class="form-group">
-                                <label>Contact Number</label>
+                                <label>Contact Number <span class="required">*</span></label>
                                 <input type="text" name="ref_contact[]" placeholder="Contact number">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Relationship</label>
+                            <label>Relationship <span class="required">*</span></label>
                             <input type="text" name="ref_relationship[]" placeholder="e.g., Former Supervisor, Colleague">
                         </div>
                     </div>
@@ -1364,14 +1660,14 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 <div class="form-section">
                     <div class="section-header">
                         <i class="fas fa-id-badge"></i>
-                        <h3>Profile Photo (1x1)</h3>
+                        <h3>Profile Photo (1x1) <span class="required">*</span></h3>
                     </div>
                     
                     <div class="file-upload-area" onclick="document.getElementById('photo').click()">
                         <i class="fas fa-camera"></i>
                         <p>Click to upload your photo</p>
-                        <small>JPG, PNG (Max 2MB)</small>
-                        <input type="file" id="photo" name="photo" accept="image/*" style="display: none;" onchange="updateFileInfo(this, 'photo-info')">
+                        <small>JPG, PNG (Max 2MB) — Required</small>
+                        <input type="file" id="photo" name="photo" accept="image/*" style="display: none;" required onchange="updateFileInfo(this, 'photo-info', 'photo-name')">
                     </div>
                     <div id="photo-info" class="file-info">
                         <i class="fas fa-check-circle"></i>
@@ -1388,8 +1684,8 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                     <div class="file-upload-area" onclick="document.getElementById('resume').click()">
                         <i class="fas fa-upload"></i>
                         <p>Click to upload your resume</p>
-                        <small>PDF, DOC, DOCX (Max 5MB)</small>
-                        <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required style="display: none;" onchange="updateFileInfo(this, 'resume-info')">
+                        <small>PDF, DOC, DOCX (Max 5MB) — Required</small>
+                        <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required style="display: none;" onchange="updateFileInfo(this, 'resume-info', 'resume-name')">
                     </div>
                     <div id="resume-info" class="file-info">
                         <i class="fas fa-check-circle"></i>
@@ -1407,7 +1703,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                         <i class="fas fa-file-alt"></i>
                         <p>Click to upload cover letter</p>
                         <small>PDF, DOC, DOCX (Max 5MB)</small>
-                        <input type="file" id="cover_letter" name="cover_letter" accept=".pdf,.doc,.docx" style="display: none;" onchange="updateFileInfo(this, 'cover-info')">
+                        <input type="file" id="cover_letter" name="cover_letter" accept=".pdf,.doc,.docx" style="display: none;" onchange="updateFileInfo(this, 'cover-info', 'cover-name')">
                     </div>
                     <div id="cover-info" class="file-info">
                         <i class="fas fa-check-circle"></i>
@@ -1436,59 +1732,56 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
         let currentStep = 1;
         const totalSteps = 6;
         
-        // Initialize form
+        // Get the form container for scroll positioning
+        const formContainer = document.querySelector('.application-form');
+        const jobHeader = document.querySelector('.job-header');
+        
         document.addEventListener('DOMContentLoaded', function() {
             updateProgress();
             updateButtons();
         });
         
+        // KEY FIX: Scroll to the form container (or job header) instead of top of page
+        // This keeps user right where the form is, not at the very top
+        function scrollToFormTop() {
+            const target = formContainer || jobHeader;
+            if (target) {
+                const yOffset = -20; // Small offset from top
+                const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+        }
+        
         function nextStep() {
             if (currentStep < totalSteps) {
-                // Validate current step
-                if (!validateStep(currentStep)) {
-                    return;
-                }
+                if (!validateStep(currentStep)) return;
                 
-                // Hide current step
                 document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.remove('active');
-                
-                // Show next step
                 currentStep++;
                 document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.add('active');
                 
-                // Update progress bar
                 updateProgress();
                 updateButtons();
-                
-                // Scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                scrollToFormTop();  // ← FIXED: stays at form, no jump to top
             }
         }
         
         function prevStep() {
             if (currentStep > 1) {
-                // Hide current step
                 document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.remove('active');
-                
-                // Show previous step
                 currentStep--;
                 document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.add('active');
                 
-                // Update progress bar
                 updateProgress();
                 updateButtons();
-                
-                // Scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                scrollToFormTop();  // ← FIXED
             }
         }
         
         function updateProgress() {
-            // Update step circles
             document.querySelectorAll('.progress-step').forEach((step, index) => {
                 const stepNum = index + 1;
                 step.classList.remove('active', 'completed');
-                
                 if (stepNum === currentStep) {
                     step.classList.add('active');
                 } else if (stepNum < currentStep) {
@@ -1496,7 +1789,6 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 }
             });
             
-            // Update progress line
             const progressFill = document.querySelector('.progress-line-fill');
             const progressPercent = ((currentStep - 1) / (totalSteps - 1)) * 100;
             progressFill.style.width = progressPercent + '%';
@@ -1518,20 +1810,164 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             }
         }
         
+        // Show selected education detail only
+        function showEduDetail(type) {
+            // Hide all edu-detail blocks
+            document.querySelectorAll('.edu-detail').forEach(el => el.classList.remove('active'));
+            
+            // Show the selected one
+            const target = document.getElementById('edu-' + type);
+            if (target) {
+                target.classList.add('active');
+                
+                // Toggle required attributes on inputs of selected detail only
+                document.querySelectorAll('.edu-detail input').forEach(input => {
+                    input.required = false;
+                });
+                
+                target.querySelectorAll('input').forEach(input => {
+                    input.required = true;
+                });
+            }
+        }
+        
+        // Toggle work experience container when "no experience" is checked
+        function toggleNoExperience(checkbox) {
+            const container = document.getElementById('experience-container');
+            const addBtn = document.getElementById('addExpBtn');
+            const inputs = container.querySelectorAll('input, textarea');
+            
+            if (checkbox.checked) {
+                container.classList.add('disabled');
+                addBtn.style.display = 'none';
+                inputs.forEach(input => {
+                    input.required = false;
+                    input.value = '';
+                });
+            } else {
+                container.classList.remove('disabled');
+                addBtn.style.display = 'flex';
+                // Mark first entry inputs as required
+                const firstEntry = container.querySelector('.experience-entry');
+                if (firstEntry) {
+                    firstEntry.querySelectorAll('input, textarea').forEach(input => {
+                        input.required = true;
+                    });
+                }
+            }
+        }
+        
+        // Validation per step
         function validateStep(step) {
-            // Basic validation for required fields
-            if (step === 1) {
-                const required = ['first_name', 'last_name', 'email', 'phone', 'birth_date', 'gender', 'address', 'city', 'province'];
-                for (let field of required) {
-                    const input = document.querySelector(`[name="${field}"]`);
-                    if (input && !input.value) {
-                        alert(`Please fill in all required fields in Personal Information`);
-                        input.focus();
-                        return false;
+            const currentFormStep = document.querySelector(`.form-step[data-step="${step}"]`);
+            const requiredInputs = currentFormStep.querySelectorAll('[required]');
+            let valid = true;
+            let firstInvalid = null;
+            
+            // Clear previous error styles
+            currentFormStep.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+            
+            requiredInputs.forEach(input => {
+                // Skip hidden/disabled inputs
+                if (input.closest('.disabled')) return;
+                
+                let value = input.value.trim();
+                
+                if (!value) {
+                    input.classList.add('error');
+                    if (!firstInvalid) firstInvalid = input;
+                    valid = false;
+                } else if (input.type === 'email') {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(value)) {
+                        input.classList.add('error');
+                        if (!firstInvalid) firstInvalid = input;
+                        valid = false;
+                    }
+                } else if (input.type === 'radio') {
+                    // Handled separately below
+                }
+            });
+            
+            // Special check for radio group (highest_education)
+            if (step === 2) {
+                const eduSelected = currentFormStep.querySelector('input[name="highest_education"]:checked');
+                if (!eduSelected) {
+                    valid = false;
+                    alert('Please select your highest educational attainment.');
+                    return false;
+                }
+                // Check that the visible detail block has all required filled
+                const activeDetail = currentFormStep.querySelector('.edu-detail.active');
+                if (activeDetail) {
+                    activeDetail.querySelectorAll('input').forEach(input => {
+                        if (!input.value.trim()) {
+                            input.classList.add('error');
+                            if (!firstInvalid) firstInvalid = input;
+                            valid = false;
+                        }
+                    });
+                }
+            }
+            
+            // Step 3: Work experience check
+            if (step === 3) {
+                const noExp = document.getElementById('noExpCheckbox').checked;
+                if (!noExp) {
+                    const firstEntry = document.querySelector('#experience-container .experience-entry');
+                    if (firstEntry) {
+                        firstEntry.querySelectorAll('input, textarea').forEach(input => {
+                            if (!input.value.trim()) {
+                                input.classList.add('error');
+                                if (!firstInvalid) firstInvalid = input;
+                                valid = false;
+                            }
+                        });
                     }
                 }
             }
-            return true;
+            
+            // Step 5: All reference fields required
+            if (step === 5) {
+                const refs = document.querySelectorAll('#references-container .experience-entry');
+                refs.forEach(ref => {
+                    ref.querySelectorAll('input').forEach(input => {
+                        if (!input.value.trim()) {
+                            input.classList.add('error');
+                            if (!firstInvalid) firstInvalid = input;
+                            valid = false;
+                        }
+                    });
+                });
+            }
+            
+            // Step 6: File uploads
+            if (step === 6) {
+                const photo = document.getElementById('photo');
+                const resume = document.getElementById('resume');
+                
+                if (!photo.files.length) {
+                    valid = false;
+                    alert('Please upload your profile photo.');
+                    photo.parentElement.classList.add('error');
+                    if (!firstInvalid) firstInvalid = photo.parentElement;
+                }
+                if (!resume.files.length) {
+                    valid = false;
+                    if (!firstInvalid) firstInvalid = resume.parentElement;
+                }
+            }
+            
+            if (!valid && firstInvalid) {
+                const label = firstInvalid.closest('.form-group')?.querySelector('label')?.innerText.replace('*', '').trim();
+                if (label && step !== 6) {
+                    alert(`Please fill in: ${label}`);
+                }
+                firstInvalid.focus();
+                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            return valid;
         }
         
         // Experience management
@@ -1545,27 +1981,27 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 </button>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Company Name</label>
-                        <input type="text" name="company[]" placeholder="Company name">
+                        <label>Company Name <span class="required">*</span></label>
+                        <input type="text" name="company[]" placeholder="Company name" required>
                     </div>
                     <div class="form-group">
-                        <label>Position / Role</label>
-                        <input type="text" name="position[]" placeholder="Your position">
+                        <label>Position / Role <span class="required">*</span></label>
+                        <input type="text" name="position[]" placeholder="Your position" required>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>From Year</label>
-                        <input type="text" name="from_year[]" placeholder="e.g., 2020">
+                        <label>From Year <span class="required">*</span></label>
+                        <input type="text" name="from_year[]" placeholder="e.g., 2020" required>
                     </div>
                     <div class="form-group">
-                        <label>To Year</label>
-                        <input type="text" name="to_year[]" placeholder="e.g., 2023 (or Present)">
+                        <label>To Year <span class="required">*</span></label>
+                        <input type="text" name="to_year[]" placeholder="e.g., 2023 (or Present)" required>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Key Responsibilities</label>
-                    <textarea name="responsibilities[]" rows="2" placeholder="Describe your responsibilities..."></textarea>
+                    <label>Key Responsibilities <span class="required">*</span></label>
+                    <textarea name="responsibilities[]" rows="2" placeholder="Describe your responsibilities..." required></textarea>
                 </div>
             `;
             container.appendChild(newEntry);
@@ -1576,7 +2012,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             if (container.children.length > 1) {
                 btn.closest('.experience-entry').remove();
             } else {
-                alert('You need at least one work experience entry.');
+                alert('You need at least one work experience entry, or check "I don\'t have any work experience yet".');
             }
         }
         
@@ -1591,27 +2027,27 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
                 </button>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" name="ref_name[]" placeholder="Reference's full name">
+                        <label>Full Name <span class="required">*</span></label>
+                        <input type="text" name="ref_name[]" placeholder="Reference's full name" required>
                     </div>
                     <div class="form-group">
-                        <label>Position</label>
-                        <input type="text" name="ref_position[]" placeholder="e.g., Manager">
+                        <label>Position <span class="required">*</span></label>
+                        <input type="text" name="ref_position[]" placeholder="e.g., Manager" required>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Company</label>
-                        <input type="text" name="ref_company[]" placeholder="Company name">
+                        <label>Company <span class="required">*</span></label>
+                        <input type="text" name="ref_company[]" placeholder="Company name" required>
                     </div>
                     <div class="form-group">
-                        <label>Contact Number</label>
-                        <input type="text" name="ref_contact[]" placeholder="Contact number">
+                        <label>Contact Number <span class="required">*</span></label>
+                        <input type="text" name="ref_contact[]" placeholder="Contact number" required>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Relationship</label>
-                    <input type="text" name="ref_relationship[]" placeholder="e.g., Former Supervisor, Colleague">
+                    <label>Relationship <span class="required">*</span></label>
+                    <input type="text" name="ref_relationship[]" placeholder="e.g., Former Supervisor, Colleague" required>
                 </div>
             `;
             container.appendChild(newEntry);
@@ -1622,30 +2058,34 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_GET['app'])) {
             if (container.children.length > 1) {
                 btn.closest('.experience-entry').remove();
             } else {
-                alert('You need at least one reference.');
+                alert('You need at least one professional reference.');
             }
         }
         
-        // File upload handling
-        function updateFileInfo(input, infoId) {
+        // File upload display
+        function updateFileInfo(input, infoId, nameId) {
             const info = document.getElementById(infoId);
-            const nameSpan = document.getElementById(infoId === 'photo-info' ? 'photo-name' : 
-                                                       (infoId === 'resume-info' ? 'resume-name' : 'cover-name'));
+            const nameSpan = document.getElementById(nameId);
             
             if (input.files && input.files[0]) {
-                nameSpan.textContent = input.files[0].name;
+                nameSpan.textContent = input.files[0].name + ' (' + (input.files[0].size / 1024).toFixed(1) + ' KB)';
                 info.classList.add('active');
             } else {
                 info.classList.remove('active');
             }
         }
         
-        // Form submission confirmation
+        // Final form submit confirmation
         document.getElementById('applicationForm').addEventListener('submit', function(e) {
             if (!confirm('Are you sure you want to submit your application? You cannot make changes after submission.')) {
                 e.preventDefault();
             }
         });
+        
+        // Init Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     </script>
 </body>
 </html>
