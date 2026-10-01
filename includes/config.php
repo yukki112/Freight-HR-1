@@ -4,12 +4,12 @@ session_start();
 
 // --- DATABASE CONFIGURATION ---
 // These pull from HostForge Environment Variables. 
-// If the variables aren't set, it falls back to the values you provided.
-$host     = getenv('DB_HOST') ?: 'mariadb-2ksp94k7.internal';
+// If the variables aren't set, it falls back to the values below.
+$host     = getenv('DB_HOST') ?: 'mariadb-9cncsfn2.internal';
 $port     = getenv('DB_PORT') ?: '3306';
-$dbname   = getenv('DB_DATABASE') ?: 'hf_db_2ksp94k7';
-$username = getenv('DB_USERNAME') ?: 'hf_fb7mueahzz';
-$password = getenv('DB_PASSWORD') ?: '2xO9X3MMCUEURm7ZM9ckkGXtYx7aXOAq';
+$dbname   = getenv('DB_DATABASE') ?: 'hf_db_9cncsfn2';
+$username = getenv('DB_USERNAME') ?: 'hf_c58urvzhqh';
+$password = getenv('DB_PASSWORD') ?: 'b363evIRaZHGrmTk26NJHHzLP8ZlCGBn';
 
 try {
     // Note: Added $port to the DSN string
