@@ -2,20 +2,27 @@
 // includes/config.php
 session_start();
 
-$host = 'localhost:3307'; // Change if needed
-$dbname = 'freight_managements';
-$username = 'root';
-$password = '';
+// --- DATABASE CONFIGURATION ---
+// These pull from HostForge Environment Variables. 
+// If the variables aren't set, it falls back to the values you provided.
+$host     = getenv('DB_HOST') ?: 'mariadb-2ksp94k7.internal';
+$port     = getenv('DB_PORT') ?: '3306';
+$dbname   = getenv('DB_DATABASE') ?: 'hf_db_2ksp94k7';
+$username = getenv('DB_USERNAME') ?: 'hf_fb7mueahzz';
+$password = getenv('DB_PASSWORD') ?: '2xO9X3MMCUEURm7ZM9ckkGXtYx7aXOAq';
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    // Note: Added $port to the DSN string
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
+    // For debugging on the cloud, it's better to see the actual error
     die(json_encode(['success' => false, 'error' => 'Database connection failed: ' . $e->getMessage()]));
 }
 
-// Helper functions
+// --- HELPER FUNCTIONS ---
+
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
 }
