@@ -4,16 +4,13 @@ session_start();
 
 // --- DATABASE CONFIGURATION ---
 // Priority Handling Logistics, Inc. — HR Management System
-// HostForge deployment: new database (hf_db_9cncsfn2)
-// 
-// NOTE: If old env vars on HostForge still point to the deleted DB
-// (mariadb-2ksp94k7.internal), this file forces the correct values.
+// HostForge: mariadb-9cncsfn2.internal / hf_db_9cncsfn2
 
 $host     = 'mariadb-9cncsfn2.internal';
 $port     = '3306';
 $dbname   = 'hf_db_9cncsfn2';
 $username = 'hf_c58urvzhqh';
-$password = 'b363evIRaZHGrmTk26NJHHzLP8ZLCGBn';
+$password = 'b363evIRaZHGrmTk26NJHHzLP8ZlCGBn';   // ← lowercase "l" in LP8ZlCGBn
 
 try {
     $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $username, $password);
@@ -63,14 +60,12 @@ function timeAgo($datetime) {
     }
 }
 
-// Get user info
 function getUserInfo($pdo, $user_id) {
     $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
     $stmt->execute([$user_id]);
     return $stmt->fetch();
 }
 
-// Get HR Dashboard Stats
 function getHRStats($pdo, $user_id) {
     $stats = [];
     
@@ -103,7 +98,6 @@ function getHRStats($pdo, $user_id) {
     return $stats;
 }
 
-// Get recent applicants
 function getRecentApplicants($pdo, $limit = 10) {
     $stmt = $pdo->prepare("
         SELECT a.*, j.title as job_title 
@@ -116,7 +110,6 @@ function getRecentApplicants($pdo, $limit = 10) {
     return $stmt->fetchAll();
 }
 
-// Get upcoming interviews
 function getUpcomingInterviews($pdo, $limit = 10) {
     $stmt = $pdo->prepare("
         SELECT i.*, 
@@ -136,7 +129,6 @@ function getUpcomingInterviews($pdo, $limit = 10) {
     return $stmt->fetchAll();
 }
 
-// Get onboarding list
 function getOnboardingList($pdo, $limit = 10) {
     $stmt = $pdo->prepare("
         SELECT nh.*, 
@@ -154,7 +146,6 @@ function getOnboardingList($pdo, $limit = 10) {
     return $stmt->fetchAll();
 }
 
-// Get recent recognitions
 function getRecentRecognitions($pdo, $limit = 10) {
     $stmt = $pdo->prepare("
         SELECT r.*, 
@@ -172,7 +163,6 @@ function getRecentRecognitions($pdo, $limit = 10) {
     return $stmt->fetchAll();
 }
 
-// Get pending document verifications
 function getPendingVerifications($pdo, $limit = 10) {
     $stmt = $pdo->prepare("
         SELECT d.*, 
@@ -188,7 +178,6 @@ function getPendingVerifications($pdo, $limit = 10) {
     return $stmt->fetchAll();
 }
 
-// Get user notifications
 function getUserNotifications($pdo, $user_id, $limit = 10, $unread_only = false) {
     $sql = "SELECT * FROM notifications WHERE user_id = ?";
     if ($unread_only) {
@@ -201,14 +190,12 @@ function getUserNotifications($pdo, $user_id, $limit = 10, $unread_only = false)
     return $stmt->fetchAll();
 }
 
-// Get unread notification count
 function getUnreadNotificationCount($pdo, $user_id) {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = FALSE");
     $stmt->execute([$user_id]);
     return $stmt->fetchColumn();
 }
 
-// Get applicant status badge class
 function getApplicantStatusBadge($status) {
     $badges = [
         'new' => 'info',
@@ -223,7 +210,6 @@ function getApplicantStatusBadge($status) {
     return $badges[$status] ?? 'secondary';
 }
 
-// Generate application number
 function generateApplicationNumber() {
     $year = date('Y');
     $month = date('m');
@@ -231,14 +217,12 @@ function generateApplicationNumber() {
     return "APP-{$year}{$month}-{$random}";
 }
 
-// Generate employee ID
 function generateEmployeeID() {
     $year = date('Y');
     $random = str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
     return "EMP-{$year}-{$random}";
 }
 
-// Log activity
 function logActivity($pdo, $user_id, $action, $description) {
     $ip = $_SERVER['REMOTE_ADDR'] ?? null;
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
