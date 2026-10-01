@@ -2960,3 +2960,6 @@ window.onclick = function(event) {
     if (event.target == completeModal) closeCompleteModal();
 }
 </script>
+<?php
+ob_end_flush();
+?>
