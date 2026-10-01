@@ -141,16 +141,8 @@ LOGSTICS,INC.</span>
                         <li class="submenu-item <?php echo isSubpageActive('orientation-schedule', $current_subpage) ? 'active' : ''; ?>"><a href="?page=onboarding&subpage=orientation-schedule"><i class="fas fa-calendar-alt"></i><span>Orientation Schedule</span></a></li>
                     </ul>
                 </ul>
-            </div>
 
-            <!-- CORE HUMAN RESOURCES -->
-            <div class="sidebar-section">
-                <?php if (!$collapsed): ?>
-                <div class="section-header">
-                    <i class="fas fa-users-cog"></i>
-                    <span>CORE HUMAN RESOURCES</span>
-                </div>
-                <?php endif; ?>
+                <!-- CORE HUMAN RESOURCES (no section header, keeps dropdown) -->
                 <ul class="nav-menu">
                     <li class="nav-item has-submenu <?php echo isModuleActive('core-hr', $current_page, $current_subpage) ? 'active' : ''; ?>" style="--item-color: #0e4c92;">
                         <a href="javascript:void(0)" onclick="toggleSubmenu('core-hr-submenu')">
@@ -189,16 +181,32 @@ LOGSTICS,INC.</span>
                         </li>
                     </ul>
                 </ul>
+
+                
+
+                <!-- ESS ADMIN (no section header, keeps dropdown) -->
+                <ul class="nav-menu">
+                    <li class="nav-item has-submenu <?php echo isModuleActive('ess-admin', $current_page, $current_subpage) ? 'active' : ''; ?>" style="--item-color: #0e4c92;">
+                        <a href="javascript:void(0)" onclick="toggleSubmenu('ess-admin-submenu')">
+                            <div class="icon-wrapper"><i class="fas fa-users-cog"></i></div>
+                            <?php if (!$collapsed): ?>
+                            <span class="nav-label">ESS Management</span>
+                            <i class="fas fa-chevron-down submenu-arrow"></i>
+                            <div class="nav-indicator"></div>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <ul class="submenu <?php echo isModuleActive('ess-admin', $current_page, $current_subpage) ? 'active' : ''; ?>" id="ess-admin-submenu">
+                        <li class="submenu-item <?php echo isSubpageActive('ess-accounts', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-accounts"><i class="fas fa-user-plus"></i><span>ESS Accounts</span></a></li>
+                        <li class="submenu-item <?php echo isSubpageActive('ess-announcements', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-announcements"><i class="fas fa-bullhorn"></i><span>Announcements</span></a></li>
+                        <li class="submenu-item <?php echo isSubpageActive('ess-requests', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-requests"><i class="fas fa-inbox"></i><span>Employee Requests</span></a></li>
+                        <li class="submenu-item <?php echo isSubpageActive('ess-documents', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-documents"><i class="fas fa-file-alt"></i><span>Document Requests</span></a></li>
+                        <li class="submenu-item <?php echo isSubpageActive('ess-settings', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-settings"><i class="fas fa-sliders-h"></i><span>ESS Settings</span></a></li>
+                    </ul>
+                </ul>
             </div>
 
-            <!-- EMPLOYEE RECORDS -->
-            <div class="sidebar-section">
-                <?php if (!$collapsed): ?>
-                <div class="section-header">
-                    <i class="fas fa-folder-tree"></i>
-                    <span>EMPLOYEE RECORDS</span>
-                </div>
-                <?php endif; ?>
+            <!-- EMPLOYEE RECORDS (no section header, keeps dropdown) -->
                 <ul class="nav-menu">
                     <li class="nav-item has-submenu <?php echo isModuleActive('erm', $current_page, $current_subpage) ? 'active' : ''; ?>" style="--item-color: #0e4c92;">
                         <a href="javascript:void(0)" onclick="toggleSubmenu('erm-submenu')">
@@ -234,39 +242,6 @@ LOGSTICS,INC.</span>
                         </li>
                     </ul>
                 </ul>
-            </div>
-
-            <!-- ESS ADMIN -->
-            <div class="sidebar-section">
-                <?php if (!$collapsed): ?>
-                <div class="section-header">
-                    <i class="fas fa-user-shield"></i>
-                    <span>ESS ADMIN</span>
-                </div>
-                <?php endif; ?>
-                <ul class="nav-menu">
-                    <li class="nav-item has-submenu <?php echo isModuleActive('ess-admin', $current_page, $current_subpage) ? 'active' : ''; ?>" style="--item-color: #0e4c92;">
-                        <a href="javascript:void(0)" onclick="toggleSubmenu('ess-admin-submenu')">
-                            <div class="icon-wrapper"><i class="fas fa-users-cog"></i></div>
-                            <?php if (!$collapsed): ?>
-                            <span class="nav-label">ESS Management</span>
-                            <i class="fas fa-chevron-down submenu-arrow"></i>
-                            <div class="nav-indicator"></div>
-                            <?php endif; ?>
-                        </a>
-                    </li>
-                    <ul class="submenu <?php echo isModuleActive('ess-admin', $current_page, $current_subpage) ? 'active' : ''; ?>" id="ess-admin-submenu">
-                        <li class="submenu-item <?php echo isSubpageActive('ess-accounts', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-accounts"><i class="fas fa-user-plus"></i><span>ESS Accounts</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('ess-announcements', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-announcements"><i class="fas fa-bullhorn"></i><span>Announcements</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('ess-requests', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-requests"><i class="fas fa-inbox"></i><span>Employee Requests</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('ess-documents', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-documents"><i class="fas fa-file-alt"></i><span>Document Requests</span></a></li>
-                        <li class="submenu-item <?php echo isSubpageActive('ess-settings', $current_subpage) ? 'active' : ''; ?>"><a href="?page=ess-admin&subpage=ess-settings"><i class="fas fa-sliders-h"></i><span>ESS Settings</span></a></li>
-                    </ul>
-                </ul>
-            </div>
-
-       
-                
 
             <!-- ADMIN -->
             <div class="sidebar-section">
@@ -291,22 +266,6 @@ LOGSTICS,INC.</span>
         </div>
 
         <div class="sidebar-footer">
-            <div class="savings-widget">
-                <div class="savings-icon"><i class="fas fa-users"></i></div>
-                <?php if (!$collapsed): ?>
-                <div class="savings-info">
-                    <span class="savings-label">Active Employees</span>
-                    <span class="savings-value"><?php echo $hr_stats['active_employees'] ?? 0; ?></span>
-                    <div class="savings-bar">
-                        <div class="savings-progress" style="width: <?php echo min(100, ($hr_stats['active_employees'] ?? 0) * 5); ?>%"></div>
-                    </div>
-                    <span class="savings-detail">
-                        <i class="fas fa-user-plus"></i> <?php echo $hr_stats['onboarding_count'] ?? 0; ?> onboarding
-                    </span>
-                </div>
-                <?php endif; ?>
-            </div>
-
             <div class="couple-profile-widget">
                 <div class="couple-avatar-single">
                     <?php if ($profile_picture_path): ?>
