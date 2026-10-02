@@ -1,5 +1,5 @@
 <?php
-// /includes/ess/ess_sidebar.phsssp
+// /includes/ess/ess_sidebar.pssssshsssp
 $current_page    = $_GET['page']    ?? 'dashboard';
 $current_subpage = $_GET['subpage'] ?? '';
 $collapsed       = isset($_COOKIE['ess_sidebar']) && $_COOKIE['ess_sidebar'] == 'collapsed';
