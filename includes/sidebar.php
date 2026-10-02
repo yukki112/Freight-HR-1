@@ -290,6 +290,31 @@ LOGSTICS,INC.</span>
     </div>
 </aside>
 
+<!-- ============================================= -->
+<!-- SESSION TIMEOUT WARNING MODAL -->
+<!-- ============================================= -->
+<div id="sessionTimeoutModal" class="session-modal-overlay" style="display: none;">
+    <div class="session-modal">
+        <div class="session-modal-icon">
+            <i class="fas fa-clock"></i>
+        </div>
+        <h3 class="session-modal-title">Session Expiring Soon</h3>
+        <p class="session-modal-message">
+            You've been inactive for a while. Your session will expire in
+            <span id="sessionCountdown" class="session-countdown">60</span> seconds.
+        </p>
+        <p class="session-modal-submessage">Would you like to continue your session?</p>
+        <div class="session-modal-buttons">
+            <button id="sessionContinueBtn" class="session-btn session-btn-continue">
+                <i class="fas fa-check"></i> Continue Session
+            </button>
+            <button id="sessionLogoutBtn" class="session-btn session-btn-logout">
+                <i class="fas fa-power-off"></i> Logout Now
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
 .logo-wrapper{width:50px;height:50px;border-radius:15px;overflow:hidden;box-shadow:0 10px 20px rgba(14,76,146,0.2);background:white;display:flex;align-items:center;justify-content:center;}
 .logo-image{width:100%;height:100%;object-fit:contain;border-radius:15px;}
@@ -309,9 +334,301 @@ LOGSTICS,INC.</span>
 .profile-avatar{width:100%;height:100%;object-fit:cover;border-radius:12px;}
 .unique-sidebar.collapsed .couple-avatar-single{width:40px;height:40px;margin:0 auto;}
 .unique-sidebar.collapsed .logo-wrapper{width:40px;height:40px;margin:0 auto;}
+
+/* ============================================= */
+/* SESSION TIMEOUT MODAL STYLES */
+/* ============================================= */
+.session-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: sessionFadeIn 0.3s ease;
+}
+@keyframes sessionFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.session-modal {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 35px 30px 30px;
+    width: 90%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+    animation: sessionSlideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+.session-modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #f39c12, #e74c3c);
+}
+@keyframes sessionSlideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.session-modal-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 18px;
+    box-shadow: 0 8px 20px rgba(243, 156, 18, 0.35);
+}
+.session-modal-icon i {
+    font-size: 30px;
+    color: #fff;
+    animation: sessionPulse 1.5s ease-in-out infinite;
+}
+@keyframes sessionPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+.session-modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0 0 10px;
+}
+.session-modal-message {
+    font-size: 14px;
+    color: #4a5568;
+    margin: 0 0 6px;
+    line-height: 1.6;
+}
+.session-countdown {
+    font-weight: 800;
+    color: #e74c3c;
+    font-size: 18px;
+    display: inline-block;
+    min-width: 30px;
+    transition: transform 0.2s;
+}
+.session-countdown.tick {
+    transform: scale(1.3);
+}
+.session-modal-submessage {
+    font-size: 13px;
+    color: #a0aec0;
+    margin: 0 0 22px;
+}
+.session-modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+.session-btn {
+    padding: 12px 22px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.25s ease;
+    font-family: inherit;
+}
+.session-btn-continue {
+    background: linear-gradient(135deg, #0e4c92, #1a5da0);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(14, 76, 146, 0.35);
+    flex: 1;
+    justify-content: center;
+}
+.session-btn-continue:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(14, 76, 146, 0.45);
+}
+.session-btn-logout {
+    background: #f1f2f6;
+    color: #e74c3c;
+    flex: 1;
+    justify-content: center;
+}
+.session-btn-logout:hover {
+    background: #ffeaea;
+    transform: translateY(-2px);
+}
 </style>
 
 <script>
+/* ============================================= */
+/* SESSION TIMEOUT CONFIGURATION */
+/* ============================================= */
+const SESSION_TIMEOUT_MS   = 5 * 60 * 1000;   // 5 minutes total inactivity
+const SESSION_WARNING_MS   = 1 * 60 * 1000;   // 1 minute before logout (warning)
+const SESSION_COUNTDOWN_S  = SESSION_WARNING_MS / 1000; // 60 seconds
+
+let sessionTimeoutTimer   = null;   // fires when the warning should appear
+let sessionLogoutTimer    = null;   // fires when auto-logout should happen
+let sessionCountdownTimer = null;   // updates the countdown display
+let sessionSecondsLeft    = SESSION_COUNTDOWN_S;
+let sessionModalVisible   = false;
+
+/* ---------------------------------------------------------
+   Reset the inactivity timers (called on any user activity)
+   --------------------------------------------------------- */
+function resetSessionTimer() {
+    // Clear all existing timers
+    clearTimeout(sessionTimeoutTimer);
+    clearTimeout(sessionLogoutTimer);
+    clearInterval(sessionCountdownTimer);
+
+    // If the warning modal is currently visible, hide it and reset countdown
+    hideSessionModal();
+
+    // Schedule the warning modal to appear 1 minute before timeout
+    sessionTimeoutTimer = setTimeout(showSessionModal, SESSION_TIMEOUT_MS - SESSION_WARNING_MS);
+
+    // Schedule the automatic logout when the full timeout elapses
+    sessionLogoutTimer = setTimeout(autoLogout, SESSION_TIMEOUT_MS);
+}
+
+/* ---------------------------------------------------------
+   Show the warning modal and start the 60-second countdown
+   --------------------------------------------------------- */
+function showSessionModal() {
+    sessionModalVisible = true;
+    sessionSecondsLeft  = SESSION_COUNTDOWN_S;
+
+    const modal     = document.getElementById('sessionTimeoutModal');
+    const countdown = document.getElementById('sessionCountdown');
+
+    if (countdown) countdown.textContent = sessionSecondsLeft;
+    if (modal) modal.style.display = 'flex';
+
+    // Tick every second
+    sessionCountdownTimer = setInterval(() => {
+        sessionSecondsLeft--;
+        if (countdown) {
+            countdown.textContent = sessionSecondsLeft;
+            countdown.classList.add('tick');
+            setTimeout(() => countdown.classList.remove('tick'), 200);
+        }
+        // If it reaches 0, the logout timer (set in resetSessionTimer) will fire
+        if (sessionSecondsLeft <= 0) {
+            clearInterval(sessionCountdownTimer);
+        }
+    }, 1000);
+}
+
+/* ---------------------------------------------------------
+   Hide the warning modal (without clearing main timers)
+   --------------------------------------------------------- */
+function hideSessionModal() {
+    const modal = document.getElementById('sessionTimeoutModal');
+    if (modal) modal.style.display = 'none';
+    clearInterval(sessionCountdownTimer);
+    sessionModalVisible = false;
+}
+
+/* ---------------------------------------------------------
+   Continue session – user clicked "Continue"
+   --------------------------------------------------------- */
+function continueSession() {
+    hideSessionModal();
+    // Re-arm the timers from scratch
+    clearTimeout(sessionTimeoutTimer);
+    clearTimeout(sessionLogoutTimer);
+    sessionTimeoutTimer = setTimeout(showSessionModal, SESSION_TIMEOUT_MS - SESSION_WARNING_MS);
+    sessionLogoutTimer  = setTimeout(autoLogout, SESSION_TIMEOUT_MS);
+}
+
+/* ---------------------------------------------------------
+   Automatic logout when the full timeout is reached
+   --------------------------------------------------------- */
+function autoLogout() {
+    hideSessionModal();
+    window.location.href = '../logout.php?reason=timeout';
+}
+
+/* ---------------------------------------------------------
+   Manual logout (from modal button or sidebar button)
+   --------------------------------------------------------- */
+function logoutNow() {
+    clearTimeout(sessionTimeoutTimer);
+    clearTimeout(sessionLogoutTimer);
+    clearInterval(sessionCountdownTimer);
+    window.location.href = 'logout.php';
+}
+
+/* ---------------------------------------------------------
+   Activity listeners – reset the timer on any interaction
+   --------------------------------------------------------- */
+const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+activityEvents.forEach(function (evt) {
+    document.addEventListener(evt, function () {
+        // Only reset if the modal is NOT visible.
+        // Once the warning modal is showing, the user must explicitly
+        // click "Continue" to reset the inactivity timer.
+        if (!sessionModalVisible) {
+            resetSessionTimer();
+        }
+    }, { passive: true });
+});
+
+/* ---------------------------------------------------------
+   Initialize the session timeout on page load
+   --------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', function () {
+    resetSessionTimer();
+
+    // Wire up the modal buttons
+    const continueBtn = document.getElementById('sessionContinueBtn');
+    const logoutBtn   = document.getElementById('sessionLogoutBtn');
+
+    if (continueBtn) continueBtn.addEventListener('click', continueSession);
+    if (logoutBtn)   logoutBtn.addEventListener('click', logoutNow);
+
+    // ----- EXISTING SIDEBAR LOGIC -----
+    document.querySelectorAll('.submenu.active').forEach(s => {
+        s.style.display = 'block';
+    });
+
+    setTimeout(function () {
+        const activeSub  = document.querySelector('.submenu-item.active a');
+        const activeTop  = document.querySelector('.nav-item.active > a');
+        const target     = activeSub || activeTop;
+        const container  = document.querySelector('.sidebar-nav-container')
+                        || document.querySelector('.sidebar-content')
+                        || document.querySelector('.unique-sidebar');
+
+        if (!target || !container) return;
+
+        const targetRect    = target.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const offset        = targetRect.top - containerRect.top;
+        const desiredScroll = container.scrollTop + offset - (containerRect.height / 2) + (targetRect.height / 2);
+
+        container.scrollTo({
+            top: Math.max(0, desiredScroll),
+            behavior: 'auto'
+        });
+    }, 50);
+});
+
+/* ---------------------------------------------------------
+   Existing sidebar functions
+   --------------------------------------------------------- */
 function toggleSubmenu(id) {
     const s = document.getElementById(id);
     if (!s) return;
@@ -343,36 +660,9 @@ function toggleSidebar() {
 
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
-        window.location.href = 'logout.php';
+        logoutNow();
     }
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.submenu.active').forEach(s => {
-        s.style.display = 'block';
-    });
-
-    setTimeout(function () {
-        const activeSub  = document.querySelector('.submenu-item.active a');
-        const activeTop  = document.querySelector('.nav-item.active > a');
-        const target     = activeSub || activeTop;
-        const container  = document.querySelector('.sidebar-nav-container')
-                        || document.querySelector('.sidebar-content')
-                        || document.querySelector('.unique-sidebar');
-
-        if (!target || !container) return;
-
-        const targetRect    = target.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        const offset        = targetRect.top - containerRect.top;
-        const desiredScroll = container.scrollTop + offset - (containerRect.height / 2) + (targetRect.height / 2);
-
-        container.scrollTo({
-            top: Math.max(0, desiredScroll),
-            behavior: 'auto'
-        });
-    }, 50);
-});
 </script>
 
 <?php
