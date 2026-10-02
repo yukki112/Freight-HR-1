@@ -33,7 +33,7 @@ function essSubActive($subpage, $current_subpage) {
         <div class="sidebar-header">
             <div class="logo-container">
                 <div class="logo-wrapper">
-                    <img src="assets/images/logo1.png" alt="HR 1 Logo" class="logo-image"
+                    <img src="assets/images/logo.png" alt="HR 1 Logo" class="logo-image"
                          onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=HR1&background=0e4c92&color=fff&size=100&bold=true&format=png';">
                 </div>
                 <?php if (!$collapsed): ?>
