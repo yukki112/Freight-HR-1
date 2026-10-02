@@ -1,5 +1,5 @@
 <?php
-// /includes/ess/ess_sidebar.pssssshsssp
+// /includes/ess/ess_sidebar.php
 $current_page    = $_GET['page']    ?? 'dashboard';
 $current_subpage = $_GET['subpage'] ?? '';
 $collapsed       = isset($_COOKIE['ess_sidebar']) && $_COOKIE['ess_sidebar'] == 'collapsed';
@@ -36,7 +36,7 @@ if (!function_exists('essSubActive')) {
                 <?php if (!$collapsed): ?>
                 <div class="logo-text-wrapper">
                     <span class="logo-bcp">ESS</span>
-                    <span class="logo-budget">Priorty Handling logistics, INC.</span>
+                    <span class="logo-budget">Priorty Handling logistics,inc.</span>
                 </div>
                 <?php endif; ?>
             </div>
@@ -252,16 +252,6 @@ if (!function_exists('essSubActive')) {
 /* ==========================================================
    ESS SIDEBAR — Component overrides (theme uses .unique-sidebar)
    ========================================================== */
-
-/* Company name under ESS logo */
-.ess-sidebar .logo-budget {
-    font-size: 9px;
-    letter-spacing: 0.3px;
-    line-height: 1.15;
-    text-transform: none;
-    white-space: normal;
-    display: block;
-}
 
 /* Unread notification badge */
 .ess-sidebar .ess-badge {
