@@ -36,7 +36,7 @@ if (!function_exists('essSubActive')) {
                 <?php if (!$collapsed): ?>
                 <div class="logo-text-wrapper">
                     <span class="logo-bcp">ESS</span>
-                    <span class="logo-budget">Priorty Handling logistics,inc.</span>
+                    <span class="logo-budget">EMPLOYEE PORTAL</span>
                 </div>
                 <?php endif; ?>
             </div>
