@@ -30,13 +30,13 @@ if (!function_exists('essSubActive')) {
         <div class="sidebar-header">
             <div class="logo-container">
                 <div class="logo-wrapper">
-                    <img src="assets/images/logo1.png" alt="HR 1 Logo" class="logo-image"
+                    <img src="assets/images/LOGO.jpg" alt="HR 1 Logo" class="logo-image"
                          onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=HR1&background=0e4c92&color=fff&size=100&bold=true&format=png';">
                 </div>
                 <?php if (!$collapsed): ?>
                 <div class="logo-text-wrapper">
                     <span class="logo-bcp">ESS</span>
-                    <span class="logo-budget">EMPLOYEE PORTAL</span>
+                    <span class="logo-budget">Priorty Handling logistics, inc.</span>
                 </div>
                 <?php endif; ?>
             </div>
@@ -252,6 +252,16 @@ if (!function_exists('essSubActive')) {
 /* ==========================================================
    ESS SIDEBAR — Component overrides (theme uses .unique-sidebar)
    ========================================================== */
+
+/* Company name under ESS logo */
+.ess-sidebar .logo-budget {
+    font-size: 9px;
+    letter-spacing: 0.3px;
+    line-height: 1.15;
+    text-transform: none;
+    white-space: normal;
+    display: block;
+}
 
 /* Unread notification badge */
 .ess-sidebar .ess-badge {
