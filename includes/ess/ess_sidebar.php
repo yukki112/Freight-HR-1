@@ -1,5 +1,5 @@
 <?php
-// /includes/ess/ess_sidebar.php
+// /includes/ess/ess_sidebar.phsssp
 $current_page    = $_GET['page']    ?? 'dashboard';
 $current_subpage = $_GET['subpage'] ?? '';
 $collapsed       = isset($_COOKIE['ess_sidebar']) && $_COOKIE['ess_sidebar'] == 'collapsed';
@@ -36,7 +36,7 @@ if (!function_exists('essSubActive')) {
                 <?php if (!$collapsed): ?>
                 <div class="logo-text-wrapper">
                     <span class="logo-bcp">ESS</span>
-                    <span class="logo-budget">Priorty Handling logistics, inc.</span>
+                    <span class="logo-budget">Priorty Handling logistics, INC.</span>
                 </div>
                 <?php endif; ?>
             </div>
